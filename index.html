@@ -1,0 +1,2193 @@
+<!DOCTYPE html>
+<html lang="pt-MZ">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Colégio Mentes Brilhantes — Sistema de Gestão Escolar</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎓</text></svg>">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --brand:#1e5f8c; --brand-dark:#134766; --brand-light:#eaf3fa;
+  --accent:#e0a836; --accent-dark:#b9852020;
+  --ok:#1f9d5a; --warn:#e0a836; --danger:#d64545; --info:#3b7dd8;
+  --bg:#f4f6f9; --card:#ffffff; --border:#e1e6ec;
+  --text:#1c2733; --text-dim:#5b6b7c; --text-faint:#8a97a6;
+  --radius:10px; --radius-lg:16px;
+  --shadow:0 1px 3px rgba(20,30,50,.08), 0 1px 2px rgba(20,30,50,.06);
+  --shadow-lg:0 10px 30px rgba(20,30,50,.12);
+  --sidebar-w:250px;
+  font-size:15px;
+}
+*{box-sizing:border-box;}
+html,body{height:100%;}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:'Segoe UI',-apple-system,BlinkMacSystemFont,Roboto,Arial,sans-serif;
+  -webkit-font-smoothing:antialiased;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+::-webkit-scrollbar{width:9px;height:9px;}
+::-webkit-scrollbar-thumb{background:#c7d0da;border-radius:6px;}
+a{color:var(--brand);text-decoration:none;}
+button{font-family:inherit;}
+h1,h2,h3,h4{margin:0 0 4px;font-weight:700;color:var(--text);}
+p{margin:0 0 8px;}
+.hidden{display:none !important;}
+.muted{color:var(--text-dim);}
+.faint{color:var(--text-faint);font-size:12.5px;}
+
+/* ---------- Buttons ---------- */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;justify-content:center;
+  padding:9px 16px;border-radius:8px;border:1px solid transparent;
+  font-size:14px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap;
+}
+.btn-primary{background:var(--brand);color:#fff;}
+.btn-primary:hover{background:var(--brand-dark);}
+.btn-accent{background:var(--accent);color:#3a2a05;}
+.btn-accent:hover{filter:brightness(0.95);}
+.btn-outline{background:#fff;border-color:var(--border);color:var(--text);}
+.btn-outline:hover{background:#f2f5f8;}
+.btn-danger{background:#fdeaea;color:var(--danger);}
+.btn-danger:hover{background:#f8d4d4;}
+.btn-ok{background:#e7f8ef;color:var(--ok);}
+.btn-sm{padding:5px 10px;font-size:12.5px;border-radius:6px;}
+.btn-icon{padding:7px 9px;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.btn-block{width:100%;}
+
+/* ---------- Layout ---------- */
+#login-screen,#setup-screen{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(160deg,var(--brand-dark),var(--brand) 60%,#2c7cad);
+  padding:20px;
+}
+.auth-card{
+  background:#fff;border-radius:var(--radius-lg);box-shadow:var(--shadow-lg);
+  width:100%;max-width:430px;padding:34px 30px;
+}
+.auth-card.wide{max-width:560px;}
+.brand-block{text-align:center;margin-bottom:22px;}
+.brand-block .logo-circle{
+  width:64px;height:64px;border-radius:50%;background:var(--brand-light);
+  display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 10px;
+}
+.brand-block h1{font-size:19px;color:var(--brand-dark);}
+.brand-block p{color:var(--text-dim);font-size:13px;}
+
+#app-shell{display:flex;min-height:100vh;}
+#sidebar{
+  width:var(--sidebar-w);flex-shrink:0;background:var(--brand-dark);color:#dfeaf3;
+  display:flex;flex-direction:column;position:fixed;top:0;bottom:0;left:0;z-index:40;
+  transition:transform .2s;padding-top:env(safe-area-inset-top,0px);
+}
+#sidebar .side-head{padding:20px 18px 14px;border-bottom:1px solid rgba(255,255,255,.12);}
+#sidebar .side-head h1{color:#fff;font-size:15.5px;line-height:1.3;}
+#sidebar .side-head span{font-size:11.5px;color:#a9c3d6;}
+#sidebar nav{flex:1;overflow-y:auto;padding:10px 10px;}
+.nav-section{margin-bottom:6px;}
+.nav-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;color:#7fa3bd;padding:12px 10px 4px;}
+.nav-item{
+  display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;
+  color:#dfeaf3;cursor:pointer;font-size:13.6px;font-weight:500;margin-bottom:2px;
+}
+.nav-item:hover{background:rgba(255,255,255,.08);}
+.nav-item.active{background:var(--accent);color:#3a2a05;font-weight:700;}
+.nav-item .ic{width:18px;text-align:center;}
+#sidebar .side-foot{padding:12px;border-top:1px solid rgba(255,255,255,.12);}
+.user-chip{display:flex;align-items:center;gap:9px;padding:8px;border-radius:8px;}
+.user-chip .av{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#3a2a05;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;}
+.user-chip .nm{font-size:12.8px;font-weight:600;color:#fff;line-height:1.2;}
+.user-chip .rl{font-size:11px;color:#a9c3d6;}
+#logout-btn{width:100%;margin-top:8px;}
+
+#main-wrap{margin-left:var(--sidebar-w);flex:1;min-width:0;display:flex;flex-direction:column;min-height:100vh;}
+#topbar{
+  background:#fff;border-bottom:1px solid var(--border);padding:12px 22px;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  position:sticky;top:0;z-index:30;padding-top:calc(12px + env(safe-area-inset-top,0px));
+}
+#topbar h2{font-size:17px;}
+#menu-toggle{display:none;background:none;border:none;font-size:20px;cursor:pointer;color:var(--brand-dark);}
+#main-content{padding:22px;flex:1;}
+#sidebar-backdrop{display:none;position:fixed;inset:0;background:rgba(10,20,30,.45);z-index:35;}
+
+@media (max-width:900px){
+  #sidebar{transform:translateX(-100%);}
+  #sidebar.open{transform:translateX(0);}
+  #main-wrap{margin-left:0;}
+  #menu-toggle{display:block;}
+  #sidebar-backdrop.show{display:block;}
+  #main-content{padding:14px;}
+  .grid-cols{grid-template-columns:1fr !important;}
+}
+
+/* ---------- Cards / grids ---------- */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow);}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap;}
+.card-head h3{font-size:15.5px;}
+.grid-cols{display:grid;gap:16px;}
+.cols-2{grid-template-columns:1fr 1fr;}
+.cols-3{grid-template-columns:1fr 1fr 1fr;}
+.cols-4{grid-template-columns:repeat(4,1fr);}
+.kpi{background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px 18px;box-shadow:var(--shadow);}
+.kpi .lbl{font-size:12px;color:var(--text-dim);font-weight:600;text-transform:uppercase;letter-spacing:.03em;}
+.kpi .val{font-size:24px;font-weight:800;margin-top:4px;}
+.kpi .sub{font-size:12px;color:var(--text-faint);margin-top:2px;}
+
+/* ---------- Tables ---------- */
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px;}
+thead th{background:#f4f7fa;text-align:left;padding:10px 12px;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-dim);border-bottom:1px solid var(--border);white-space:nowrap;}
+tbody td{padding:10px 12px;border-bottom:1px solid #eef1f5;vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#fafbfc;}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;}
+.badge-ok{background:#e7f8ef;color:var(--ok);}
+.badge-warn{background:#fef5e3;color:#9c6f0f;}
+.badge-danger{background:#fdeaea;color:var(--danger);}
+.badge-info{background:#e9f1fc;color:var(--info);}
+.badge-gray{background:#eef1f5;color:var(--text-dim);}
+.row-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:13px;}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-dim);margin-bottom:5px;}
+input,select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;
+  font-size:14px;font-family:inherit;background:#fff;color:var(--text);
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-light);}
+textarea{resize:vertical;min-height:80px;}
+.field-row{display:flex;gap:12px;flex-wrap:wrap;}
+.field-row .field{flex:1;min-width:160px;}
+.help{font-size:11.5px;color:var(--text-faint);margin-top:4px;}
+.search-box{position:relative;max-width:280px;}
+.search-box input{padding-left:32px;}
+.search-box::before{content:'🔎';position:absolute;left:10px;top:8px;font-size:13px;}
+
+/* ---------- Tabs ---------- */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px;flex-wrap:wrap;}
+.tab{padding:9px 15px;font-size:13.5px;font-weight:600;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;}
+.tab.active{color:var(--brand);border-bottom-color:var(--brand);}
+
+/* ---------- Modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(15,25,40,.5);display:flex;align-items:flex-start;justify-content:center;z-index:100;padding:26px 14px;overflow-y:auto;}
+.modal{background:#fff;border-radius:var(--radius-lg);width:100%;max-width:640px;box-shadow:var(--shadow-lg);margin:auto;}
+.modal.wide{max-width:880px;}
+.modal-head{padding:18px 22px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-head h3{font-size:16px;}
+.modal-close{background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-dim);}
+.modal-body{padding:20px 22px;max-height:70vh;overflow-y:auto;}
+.modal-foot{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;}
+
+.toast-wrap{position:fixed;bottom:18px;right:18px;z-index:200;display:flex;flex-direction:column;gap:8px;}
+.toast{background:#1c2733;color:#fff;padding:12px 16px;border-radius:8px;font-size:13.5px;box-shadow:var(--shadow-lg);max-width:320px;animation:slideIn .2s;}
+.toast.ok{background:#166534;} .toast.err{background:#991b1b;}
+@keyframes slideIn{from{transform:translateY(10px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+
+.empty-state{text-align:center;padding:40px 16px;color:var(--text-faint);}
+.empty-state .ic{font-size:34px;margin-bottom:8px;}
+
+/* ---------- Print docs ---------- */
+.print-doc{background:#fff;padding:40px;max-width:800px;margin:0 auto;font-family:Georgia,'Times New Roman',serif;color:#111;}
+.print-doc h1,.print-doc h2,.print-doc h3{font-family:Georgia,serif;}
+.print-doc .doc-head{text-align:center;border-bottom:2px solid #333;padding-bottom:14px;margin-bottom:22px;}
+.print-doc .doc-head h1{font-size:16px;letter-spacing:.03em;}
+.print-doc .doc-head .sub{font-size:12px;color:#444;}
+.print-doc .sign-row{display:flex;justify-content:space-between;margin-top:60px;}
+.print-doc .sign-block{width:45%;text-align:center;border-top:1px solid #333;padding-top:6px;font-size:12.5px;}
+.slip-table{width:100%;border-collapse:collapse;margin:14px 0;font-family:Arial,sans-serif;font-size:12.5px;}
+.slip-table th,.slip-table td{border:1px solid #999;padding:6px 9px;text-align:left;}
+.slip-table th{background:#f0f0f0;}
+@media print{
+  body *{visibility:hidden;}
+  #print-area, #print-area *{visibility:visible;}
+  #print-area{position:absolute;top:0;left:0;width:100%;margin:0;padding:20px;}
+  .no-print{display:none !important;}
+}
+
+.login-tag{display:inline-block;background:var(--brand-light);color:var(--brand-dark);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin-bottom:10px;}
+.step-dots{display:flex;gap:6px;justify-content:center;margin-bottom:18px;}
+.step-dots span{width:8px;height:8px;border-radius:50%;background:var(--border);}
+.step-dots span.active{background:var(--brand);}
+.chip-select{display:flex;flex-wrap:wrap;gap:8px;}
+.chip-opt{border:1px solid var(--border);padding:8px 13px;border-radius:20px;font-size:13px;cursor:pointer;font-weight:600;}
+.chip-opt.sel{background:var(--brand);color:#fff;border-color:var(--brand);}
+.progress-bar{height:7px;background:#eef1f5;border-radius:20px;overflow:hidden;}
+.progress-bar > div{height:100%;background:var(--ok);}
+.two-col-form{display:grid;grid-template-columns:1fr 1fr;gap:0 14px;}
+@media (max-width:600px){.two-col-form{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast-wrap" class="toast-wrap"></div>
+<script>
+/* ====================================================================
+   COLÉGIO MENTES BRILHANTES — SISTEMA DE GESTÃO ESCOLAR (ERP)
+   Firebase (Firestore + Auth) · Single-file · PWA-ready · Offline
+==================================================================== */
+
+/* ---------------------------------------------------------------
+   1. FIREBASE CONFIG
+   Substitua pelo config do SEU projecto Firebase (Firestore + Auth
+   por Email/Senha activados). Ver instruções no fim desta mensagem.
+---------------------------------------------------------------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyBIglCTgZmEJLaffOjenEWXM_u3pLeArB8",
+  authDomain: "colegio-mentes-brilhantes.firebaseapp.com",
+  projectId: "colegio-mentes-brilhantes",
+  storageBucket: "colegio-mentes-brilhantes.firebasestorage.app",
+  messagingSenderId: "923206197653",
+  appId: "1:923206197653:web:c4f06e4e65d9b442c8969c"
+};
+
+let firebaseReady = false;
+try{
+  firebase.initializeApp(firebaseConfig);
+  firebaseReady = true;
+}catch(e){ console.error("Firebase init falhou", e); }
+
+const auth = firebaseReady ? firebase.auth() : null;
+const db = firebaseReady ? firebase.firestore() : null;
+if(db){
+  db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+}
+
+/* ---------------------------------------------------------------
+   2. CONSTANTES DO DOMÍNIO
+---------------------------------------------------------------- */
+const NIVEIS_TURMA = [
+  "Berçário","Infantil 1","Infantil 2","Infantil 3","Pré-Escolar",
+  "1ª Classe","2ª Classe","3ª Classe","4ª Classe","5ª Classe","6ª Classe","7ª Classe"
+];
+const FUNCOES_STAFF = [
+  "Director(a)","Coordenador(a) Pedagógico(a)","Professor(a)","Educador(a) de Infância",
+  "Secretária(o)","Técnico(a) de Contabilidade/Financeiro","Cozinheiro(a)","Auxiliar de Cozinha",
+  "Guarda / Segurança","Auxiliar de Limpeza","Motorista","Enfermeiro(a) Escolar","Outro"
+];
+const FORMAS_PAGAMENTO = ["Numerário","M-Pesa","e-Mola","mKesh","Transferência Bancária","Depósito Bancário","Cheque","POS/Cartão"];
+const ROLES = {
+  diretor:{label:"Director(a)"}, financeiro:{label:"Financeiro"}, rh:{label:"Recursos Humanos"},
+  secretaria:{label:"Secretaria"}, pedagogico:{label:"Coordenação Pedagógica"}, professor:{label:"Professor(a)"}
+};
+const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+
+// IRPS mensal (Moçambique) — tabela configurável em Configurações > Parâmetros Legais
+const DEFAULT_IRPS_TABLE = [
+  {ate:3500, taxa:0.10, deduzir:0},
+  {ate:14000, taxa:0.15, deduzir:175},
+  {ate:42000, taxa:0.20, deduzir:875},
+  {ate:126000, taxa:0.25, deduzir:3125},
+  {ate:Infinity, taxa:0.32, deduzir:11795}
+];
+const DEFAULT_LEGAL = {
+  inssEmpregado:0.03, inssEntidade:0.04, deducaoPessoalMensal:150,
+  irpsTable: DEFAULT_IRPS_TABLE, salarioMinimo:0, subsidioFuneralValor:500
+};
+// Política de mensalidades: janela de pagamento dia 20 (mês corrente) a dia 5 (mês seguinte),
+// multa de atraso, desconto para encarregados com vários educandos, e desconto por adiantamento.
+const DEFAULT_DESCONTOS = {
+  multaAtrasoPct:15, diaAberturaPagamento:20, diaLimitePagamento:5,
+  irmaosMinQtd:3, irmaosPercentual:10,
+  adiantamentoMinMeses:2, adiantamentoPercentual:5
+};
+
+/* ---------------------------------------------------------------
+   3. ESTADO GLOBAL
+---------------------------------------------------------------- */
+const state = {
+  user:null, role:null, funcionarioId:null, nomeUtilizador:"",
+  school:null, legal:null, descontos:null,
+  alunos:[], turmas:[], matriculas:[], mensalidades:[], funcionarios:[], precos:[],
+  contratosModelos:[], assiduidade:[], adiantamentos:[], folhas:[],
+  planos:[], pautas:[], horarios:[], despesas:[], necessidades:[], usersList:[],
+  view:"dashboard", viewParams:{}, sidebarOpen:false, listenersOn:false
+};
+let unsubs = [];
+
+function fmtMZN(v){
+  v = Number(v||0);
+  return v.toLocaleString('pt-MZ',{minimumFractionDigits:2,maximumFractionDigits:2}) + " MT";
+}
+function fmtDate(d){
+  if(!d) return "—";
+  let dt = (d instanceof Date) ? d : (d.toDate ? d.toDate() : new Date(d));
+  if(isNaN(dt)) return "—";
+  return dt.toLocaleDateString('pt-MZ',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function uid(){ return 'id_'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function esc(s){ return (s===undefined||s===null)?"":String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function toast(msg,type){
+  const w = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type==='ok'?'ok':type==='err'?'err':'');
+  t.textContent = msg;
+  w.appendChild(t);
+  setTimeout(()=>t.remove(), 3600);
+}
+
+/* ---------------------------------------------------------------
+   4. AUTENTICAÇÃO / ARRANQUE
+---------------------------------------------------------------- */
+function renderRoot(html){ document.getElementById('root').innerHTML = html; }
+
+async function bootApp(){
+  if(!firebaseReady){
+    renderRoot(`<div id="login-screen"><div class="auth-card"><div class="brand-block">
+      <div class="logo-circle">⚠️</div><h1>Configuração do Firebase em falta</h1>
+      <p>Edite o ficheiro e insira o <b>firebaseConfig</b> do seu projecto Firebase (Firestore + Authentication por Email/Senha) no topo do &lt;script&gt;.</p>
+    </div></div></div>`);
+    return;
+  }
+  renderRoot(`<div id="login-screen"><div class="auth-card"><div class="brand-block"><div class="logo-circle">🎓</div><h1>A carregar…</h1></div></div></div>`);
+
+  // Verifica se já existe configuração da escola (setup inicial)
+  let schoolDoc;
+  try{ schoolDoc = await db.collection('config').doc('school').get(); }
+  catch(e){ schoolDoc = {exists:false}; }
+
+  auth.onAuthStateChanged(async (user)=>{
+    if(!schoolDoc.exists){
+      renderSetupWizard();
+      return;
+    }
+    state.school = schoolDoc.data();
+    if(user){
+      let udoc;
+      try{ udoc = await db.collection('users').doc(user.uid).get(); }catch(e){ udoc=null; }
+      if(udoc && udoc.exists){
+        const ud = udoc.data();
+        state.user = user; state.role = ud.role; state.funcionarioId = ud.funcionarioId||null;
+        state.nomeUtilizador = ud.nome || user.email;
+        attachListeners();
+      }else{
+        renderLogin("A sua conta não está associada a nenhum perfil. Contacte o Director/RH.");
+      }
+    }else{
+      renderLogin();
+    }
+  });
+}
+
+function renderLogin(errorMsg){
+  renderRoot(`
+  <div id="login-screen">
+    <div class="auth-card">
+      <div class="brand-block">
+        <div class="logo-circle">🎓</div>
+        <h1>${esc(state.school?.nome||"Colégio Mentes Brilhantes")}</h1>
+        <p>Sistema Integrado de Gestão Escolar</p>
+      </div>
+      ${errorMsg?`<div class="badge badge-danger" style="display:block;padding:10px;margin-bottom:14px;">${esc(errorMsg)}</div>`:""}
+      <form id="login-form">
+        <div class="field"><label>Email</label><input type="email" id="login-email" required autocomplete="username"></div>
+        <div class="field"><label>Senha</label><input type="password" id="login-pass" required autocomplete="current-password"></div>
+        <button class="btn btn-primary btn-block" type="submit">Entrar</button>
+        <p style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;">Esqueci a minha senha</a></p>
+      </form>
+      <p class="faint" style="text-align:center;margin-top:16px;">Acesso apenas para pessoal autorizado do Colégio.</p>
+    </div>
+  </div>`);
+  document.getElementById('login-form').onsubmit = async (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim();
+    const pass = document.getElementById('login-pass').value;
+    try{
+      await auth.signInWithEmailAndPassword(email,pass);
+    }catch(err){
+      renderLogin("Credenciais inválidas: " + (err.message||""));
+    }
+  };
+}
+
+async function esqueciSenha(){
+  const email = (document.getElementById('login-email')?.value||'').trim();
+  if(!email){ toast('Escreva o seu email no campo acima e clique novamente.','err'); return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
+    toast('Enviámos um link de redefinição de senha para '+email+'.','ok');
+  }catch(err){ toast('Não foi possível enviar: '+(err.message||''),'err'); }
+}
+function abrirAlterarSenha(){
+  openModal(`
+    <div class="modal-head"><h3>🔑 Alterar a minha senha</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Senha actual</label><input id="pw-atual" type="password" autocomplete="current-password"></div>
+      <div class="field"><label>Nova senha (mínimo 6 caracteres)</label><input id="pw-nova" type="password" autocomplete="new-password"></div>
+      <div class="field"><label>Confirmar nova senha</label><input id="pw-conf" type="password" autocomplete="new-password"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="pw-btn">Guardar nova senha</button></div>
+  `);
+  document.getElementById('pw-btn').onclick = async ()=>{
+    const atual=document.getElementById('pw-atual').value, nova=document.getElementById('pw-nova').value, conf=document.getElementById('pw-conf').value;
+    if(!atual||!nova){ toast('Preencha todos os campos.','err'); return; }
+    if(nova.length<6){ toast('A nova senha deve ter pelo menos 6 caracteres.','err'); return; }
+    if(nova!==conf){ toast('A confirmação não coincide com a nova senha.','err'); return; }
+    if(nova===atual){ toast('A nova senha deve ser diferente da actual.','err'); return; }
+    const btn=document.getElementById('pw-btn'); btn.disabled=true; btn.textContent='A guardar…';
+    try{
+      const user=auth.currentUser;
+      await user.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(user.email,atual));
+      await user.updatePassword(nova);
+      closeModal(); toast('Senha alterada com sucesso.','ok');
+    }catch(err){
+      const bad=['auth/wrong-password','auth/invalid-credential','auth/invalid-login-credentials'].includes(err.code);
+      toast(bad?'A senha actual está incorrecta.':'Erro: '+(err.message||''),'err');
+      btn.disabled=false; btn.textContent='Guardar nova senha';
+    }
+  };
+}
+function logout(){
+  detachListeners();
+  auth.signOut();
+}
+
+/* ---------------------------------------------------------------
+   5. ASSISTENTE DE CONFIGURAÇÃO INICIAL (1ª execução)
+---------------------------------------------------------------- */
+function renderSetupWizard(step){
+  step = step || 1;
+  renderRoot(`
+  <div id="setup-screen"><div class="auth-card wide">
+    <div class="brand-block"><div class="logo-circle">🎓</div><h1>Configuração Inicial</h1><p>Vamos preparar o sistema do Colégio Mentes Brilhantes</p></div>
+    <div class="step-dots"><span class="${step>=1?'active':''}"></span><span class="${step>=2?'active':''}"></span><span class="${step>=3?'active':''}"></span></div>
+    <div id="setup-body"></div>
+  </div></div>`);
+  const body = document.getElementById('setup-body');
+  if(step===1){
+    body.innerHTML = `
+      <h3 style="margin-bottom:10px;">1. Dados da Escola</h3>
+      <div class="field"><label>Nome da Escola</label><input id="s-nome" value="Colégio Mentes Brilhantes"></div>
+      <div class="field-row">
+        <div class="field"><label>NUIT</label><input id="s-nuit" placeholder="Opcional"></div>
+        <div class="field"><label>Ano Lectivo actual</label><input id="s-ano" value="${new Date().getFullYear()}"></div>
+      </div>
+      <div class="field"><label>Endereço</label><input id="s-end" placeholder="Ex: Bairro, Rua, Cidade"></div>
+      <div class="field-row">
+        <div class="field"><label>Telefone</label><input id="s-tel"></div>
+        <div class="field"><label>Email institucional</label><input id="s-email" type="email"></div>
+      </div>
+      <button class="btn btn-primary btn-block" id="s-next1">Continuar →</button>`;
+    document.getElementById('s-next1').onclick = ()=>{
+      state._setupSchool = {
+        nome: document.getElementById('s-nome').value.trim()||"Colégio Mentes Brilhantes",
+        nuit: document.getElementById('s-nuit').value.trim(),
+        anoLectivo: document.getElementById('s-ano').value.trim(),
+        endereco: document.getElementById('s-end').value.trim(),
+        telefone: document.getElementById('s-tel').value.trim(),
+        email: document.getElementById('s-email').value.trim()
+      };
+      renderSetupWizard(2);
+    };
+  } else if(step===2){
+    body.innerHTML = `
+      <h3 style="margin-bottom:10px;">2. Conta do(a) Director(a)</h3>
+      <p class="faint" style="margin-bottom:14px;">Esta será a conta principal com acesso total ao sistema, incluindo o Dashboard.</p>
+      <div class="field"><label>Nome completo</label><input id="d-nome"></div>
+      <div class="field-row">
+        <div class="field"><label>Email</label><input id="d-email" type="email"></div>
+        <div class="field"><label>Senha (mín. 6 caracteres)</label><input id="d-pass" type="password"></div>
+      </div>
+      <div class="field-row">
+        <button class="btn btn-outline" id="s-back2">← Voltar</button>
+        <button class="btn btn-primary" id="s-next2" style="flex:1;">Criar conta e continuar →</button>
+      </div>`;
+    document.getElementById('s-back2').onclick = ()=>renderSetupWizard(1);
+    document.getElementById('s-next2').onclick = async ()=>{
+      const nome=document.getElementById('d-nome').value.trim();
+      const email=document.getElementById('d-email').value.trim();
+      const pass=document.getElementById('d-pass').value;
+      if(!nome||!email||pass.length<6){ toast("Preencha todos os campos (senha ≥ 6 caracteres).","err"); return; }
+      const btn = document.getElementById('s-next2'); btn.disabled=true; btn.textContent="A criar…";
+      try{
+        const cred = await auth.createUserWithEmailAndPassword(email,pass);
+        await db.collection('users').doc(cred.user.uid).set({nome,email,role:'diretor',funcionarioId:null,criadoEm:new Date().toISOString()});
+        state._setupDirector = {uid:cred.user.uid,nome,email};
+        renderSetupWizard(3);
+      }catch(err){ toast("Erro: "+err.message,"err"); btn.disabled=false; btn.textContent="Criar conta e continuar →"; }
+    };
+  } else if(step===3){
+    body.innerHTML = `
+      <h3 style="margin-bottom:10px;">3. Concluir</h3>
+      <p>Vamos gravar a configuração da escola e os parâmetros legais por omissão (INSS, IRPS) de Moçambique, que poderá ajustar depois em <b>Configurações</b>.</p>
+      <div class="card" style="margin:14px 0;background:var(--brand-light);border:none;">
+        <p class="faint">INSS: 3% trabalhador / 4% entidade patronal · IRPS: tabela progressiva 10%–32% · Estes valores são de referência — confirme sempre com a legislação laboral e fiscal vigente.</p>
+      </div>
+      <button class="btn btn-primary btn-block" id="s-finish">Finalizar Configuração</button>`;
+    document.getElementById('s-finish').onclick = async ()=>{
+      const btn=document.getElementById('s-finish'); btn.disabled=true; btn.textContent="A gravar…";
+      try{
+        await db.collection('config').doc('school').set(state._setupSchool);
+        await db.collection('config').doc('legal').set(DEFAULT_LEGAL);
+        toast("Configuração concluída! Bem-vindo(a).","ok");
+        location.reload();
+      }catch(err){ toast("Erro: "+err.message,"err"); btn.disabled=false; }
+    };
+  }
+}
+
+/* ---------------------------------------------------------------
+   6. LISTENERS FIRESTORE (tempo real, com suporte offline)
+---------------------------------------------------------------- */
+const COLLECTIONS = ["alunos","turmas","matriculas","mensalidades","funcionarios",
+  "contratosModelos","assiduidade","adiantamentos","folhas","planosAvaliacao",
+  "pautas","horarios","despesas","necessidades","precosMensalidades"];
+const COL_STATE_KEY = {planosAvaliacao:"planos", precosMensalidades:"precos"};
+
+function attachListeners(){
+  if(state.listenersOn) return;
+  state.listenersOn = true;
+  db.collection('config').doc('legal').get().then(d=>{ state.legal = d.exists? d.data() : DEFAULT_LEGAL; render(); });
+  db.collection('config').doc('descontos').get().then(d=>{ state.descontos = d.exists? d.data() : DEFAULT_DESCONTOS; render(); });
+  db.collection('users').onSnapshot(snap=>{
+    state.usersList = snap.docs.map(d=>({id:d.id,...d.data()})); render();
+  });
+  COLLECTIONS.forEach(col=>{
+    const key = COL_STATE_KEY[col] || col;
+    const unsub = db.collection(col).onSnapshot(snap=>{
+      state[key] = snap.docs.map(d=>({id:d.id,...d.data()}));
+      render();
+    }, err=>console.error(col,err));
+    unsubs.push(unsub);
+  });
+  renderShell();
+}
+function detachListeners(){
+  unsubs.forEach(u=>u()); unsubs=[];
+  state.listenersOn=false;
+}
+
+/* ---------------------------------------------------------------
+   7. NAVEGAÇÃO / SHELL
+---------------------------------------------------------------- */
+const NAV_BY_ROLE = {
+  diretor:[
+    {sec:"Geral",items:[["dashboard","📊","Dashboard"]]},
+    {sec:"Académico",items:[["alunos","🧒","Alunos"],["matriculas","📝","Matrículas"],["mensalidades","💳","Mensalidades"],["pedagogico","📚","Pedagógico"]]},
+    {sec:"Recursos Humanos",items:[["funcionarios","👥","Funcionários"],["contratos","📄","Contratos"],["assiduidade","🕒","Assiduidade"],["adiantamentos","💰","Adiantamentos"],["folha","🧾","Folha de Salário"]]},
+    {sec:"Financeiro",items:[["financeiro","🏦","Financeiro"]]},
+    {sec:"Sistema",items:[["config","⚙️","Configurações"]]}
+  ],
+  financeiro:[
+    {sec:"Geral",items:[["mensalidades","💳","Mensalidades"]]},
+    {sec:"Financeiro",items:[["financeiro","🏦","Despesas & Necessidades"],["folha","🧾","Folha de Salário"]]},
+  ],
+  rh:[
+    {sec:"Recursos Humanos",items:[["funcionarios","👥","Funcionários"],["contratos","📄","Contratos"],["assiduidade","🕒","Assiduidade"],["adiantamentos","💰","Adiantamentos"],["folha","🧾","Folha de Salário"]]}
+  ],
+  secretaria:[
+    {sec:"Académico",items:[["alunos","🧒","Alunos"],["matriculas","📝","Matrículas"],["mensalidades","💳","Mensalidades"]]}
+  ],
+  pedagogico:[
+    {sec:"Pedagógico",items:[["pedagogico","📚","Turmas & Horários"],["alunos","🧒","Alunos"]]}
+  ],
+  professor:[
+    {sec:"Minha Área",items:[["professor","🍎","Minhas Turmas"]]}
+  ]
+};
+
+function initials(name){
+  if(!name) return "?";
+  const p = name.trim().split(/\s+/);
+  return ((p[0]?.[0]||"")+(p[p.length-1]?.[0]||"")).toUpperCase();
+}
+
+function renderShell(){
+  renderRoot(`
+  <div id="app-shell">
+    <div id="sidebar-backdrop" class="no-print" onclick="toggleSidebar(false)"></div>
+    <aside id="sidebar" class="no-print">
+      <div class="side-head">
+        <h1>🎓 ${esc(state.school?.nome||"Colégio Mentes Brilhantes")}</h1>
+        <span>Ano Lectivo ${esc(state.school?.anoLectivo||new Date().getFullYear())}</span>
+      </div>
+      <nav id="side-nav"></nav>
+      <div class="side-foot">
+        <div class="user-chip">
+          <div class="av">${initials(state.nomeUtilizador)}</div>
+          <div><div class="nm">${esc(state.nomeUtilizador)}</div><div class="rl">${esc(ROLES[state.role]?.label||state.role)}</div></div>
+        </div>
+        <button class="btn btn-outline btn-block btn-sm" style="margin-bottom:6px;" onclick="abrirAlterarSenha()">🔑 Alterar senha</button>
+        <button class="btn btn-outline btn-block btn-sm" id="logout-btn" onclick="logout()">Sair</button>
+      </div>
+    </aside>
+    <div id="main-wrap">
+      <div id="topbar" class="no-print">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button id="menu-toggle" onclick="toggleSidebar()">☰</button>
+          <h2 id="topbar-title"></h2>
+        </div>
+        <div class="faint" id="topbar-sub"></div>
+      </div>
+      <div id="main-content"></div>
+    </div>
+  </div>`);
+  buildNav();
+  render();
+}
+function toggleSidebar(force){
+  const sb=document.getElementById('sidebar'), bd=document.getElementById('sidebar-backdrop');
+  const open = force!==undefined?force:!sb.classList.contains('open');
+  sb.classList.toggle('open',open); bd.classList.toggle('show',open);
+}
+function buildNav(){
+  const sections = NAV_BY_ROLE[state.role]||[];
+  const nav = document.getElementById('side-nav');
+  nav.innerHTML = sections.map(s=>`
+    <div class="nav-section"><div class="nav-label">${esc(s.sec)}</div>
+    ${s.items.map(([id,ic,lbl])=>`<div class="nav-item ${state.view===id?'active':''}" onclick="navigate('${id}')"><span class="ic">${ic}</span>${esc(lbl)}</div>`).join('')}
+    </div>`).join('');
+}
+function navigate(view,params){
+  state.view = view; state.viewParams = params||{};
+  toggleSidebar(false);
+  render();
+}
+
+const TITLES = {dashboard:"Dashboard",alunos:"Alunos",matriculas:"Matrículas",mensalidades:"Mensalidades",
+  funcionarios:"Funcionários",contratos:"Contratos",assiduidade:"Assiduidade",adiantamentos:"Adiantamentos",
+  folha:"Folha de Salário",pedagogico:"Módulo Pedagógico",professor:"Minhas Turmas",financeiro:"Financeiro",config:"Configurações"};
+
+function render(){
+  if(!document.getElementById('main-content')) return;
+  buildNav();
+  document.getElementById('topbar-title').textContent = TITLES[state.view]||"";
+  document.getElementById('topbar-sub').textContent = todayLong();
+  const mc = document.getElementById('main-content');
+  const renderers = {
+    dashboard:renderDashboard, alunos:renderAlunos, matriculas:renderMatriculas, mensalidades:renderMensalidades,
+    funcionarios:renderFuncionarios, contratos:renderContratos, assiduidade:renderAssiduidade,
+    adiantamentos:renderAdiantamentos, folha:renderFolha, pedagogico:renderPedagogico,
+    professor:renderProfessorArea, financeiro:renderFinanceiro, config:renderConfig
+  };
+  const fn = renderers[state.view];
+  mc.innerHTML = fn ? fn() : `<div class="empty-state">Página não encontrada.</div>`;
+  if(fn && fn._after) fn._after();
+}
+function todayLong(){
+  return new Date().toLocaleDateString('pt-MZ',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+}
+
+/* ---------------------------------------------------------------
+   8. HELPERS DE UI GENÉRICOS (modal, formulários, CRUD)
+---------------------------------------------------------------- */
+function openModal(innerHtml, opts){
+  opts = opts||{};
+  const bd = document.createElement('div');
+  bd.className='modal-backdrop'; bd.id='active-modal';
+  bd.innerHTML = `<div class="modal ${opts.wide?'wide':''}">${innerHtml}</div>`;
+  bd.addEventListener('mousedown',(e)=>{ if(e.target===bd) closeModal(); });
+  document.body.appendChild(bd);
+}
+function closeModal(){ const m=document.getElementById('active-modal'); if(m) m.remove(); }
+
+function fieldHtml(f, val){
+  val = val===undefined||val===null ? "" : val;
+  const req = f.required?"required":"";
+  if(f.type==='select'){
+    return `<select id="fld_${f.key}" ${req}>${(f.options||[]).map(o=>{
+      const [ov,ol] = Array.isArray(o)?o:[o,o];
+      return `<option value="${esc(ov)}" ${String(val)===String(ov)?'selected':''}>${esc(ol)}</option>`;
+    }).join('')}</select>`;
+  }
+  if(f.type==='textarea'){
+    return `<textarea id="fld_${f.key}" ${req} rows="${f.rows||4}">${esc(val)}</textarea>`;
+  }
+  return `<input id="fld_${f.key}" type="${f.type||'text'}" ${req} value="${esc(val)}" ${f.step?`step="${f.step}"`:''} placeholder="${esc(f.placeholder||'')}">`;
+}
+function openFormModal(opts){
+  // opts: {title, fields:[{key,label,type,options,required}], initial:{}, onSubmit(data), submitLabel}
+  const initial = opts.initial||{};
+  const rows = opts.fields.map(f=>{
+    if(f.half) return null;
+    return `<div class="field"><label>${esc(f.label)}${f.required?' *':''}</label>${fieldHtml(f,initial[f.key])}${f.help?`<div class="help">${esc(f.help)}</div>`:''}</div>`;
+  });
+  // group consecutive half-width fields into rows
+  let html=""; let i=0;
+  while(i<opts.fields.length){
+    const f=opts.fields[i];
+    if(f.half){
+      let group=[f]; let j=i+1;
+      while(j<opts.fields.length && opts.fields[j].half){ group.push(opts.fields[j]); j++; }
+      html += `<div class="field-row">${group.map(g=>`<div class="field"><label>${esc(g.label)}${g.required?' *':''}</label>${fieldHtml(g,initial[g.key])}</div>`).join('')}</div>`;
+      i=j;
+    }else{
+      html += `<div class="field"><label>${esc(f.label)}${f.required?' *':''}</label>${fieldHtml(f,initial[f.key])}${f.help?`<div class="help">${esc(f.help)}</div>`:''}</div>`;
+      i++;
+    }
+  }
+  openModal(`
+    <div class="modal-head"><h3>${esc(opts.title)}</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body"><form id="generic-form">${html}</form></div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" id="generic-form-submit">${esc(opts.submitLabel||'Guardar')}</button></div>
+  `, {wide:opts.wide});
+  document.getElementById('generic-form-submit').onclick = async ()=>{
+    const data={};
+    for(const f of opts.fields){
+      const el = document.getElementById('fld_'+f.key);
+      if(!el) continue;
+      data[f.key] = f.type==='number' ? (el.value===''?null:Number(el.value)) : el.value;
+      if(f.required && (data[f.key]===''||data[f.key]===null)){ toast("Preencha o campo: "+f.label,"err"); return; }
+    }
+    const btn=document.getElementById('generic-form-submit'); btn.disabled=true; btn.textContent="A guardar…";
+    try{ await opts.onSubmit(data); closeModal(); }
+    catch(err){ toast("Erro: "+err.message,"err"); btn.disabled=false; btn.textContent=opts.submitLabel||'Guardar'; }
+  };
+}
+function confirmAction(msg, onYes){
+  openModal(`
+    <div class="modal-head"><h3>Confirmar</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body"><p>${esc(msg)}</p></div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="confirm-yes">Confirmar</button></div>`);
+  document.getElementById('confirm-yes').onclick = async ()=>{ await onYes(); closeModal(); };
+}
+
+function tableShell(columns, rowsHtml, opts){
+  opts=opts||{};
+  if(!rowsHtml){
+    return `<div class="empty-state"><div class="ic">📭</div><p>${esc(opts.emptyMsg||'Sem registos.')}</p></div>`;
+  }
+  return `<div class="table-wrap"><table><thead><tr>${columns.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+}
+
+function canEditModule(...roles){ return roles.includes(state.role); }
+
+/* =================================================================
+   9. DASHBOARD  (apenas Director)
+================================================================== */
+function renderDashboard(){
+  const totalAlunos = state.alunos.filter(a=>a.estado!=='inativo').length;
+  const totalFuncionarios = state.funcionarios.filter(f=>f.estado!=='inativo').length;
+  const mesAtual = new Date().getMonth(), anoAtual = new Date().getFullYear();
+  const mensalidadesMes = state.mensalidades.filter(m=>Number(m.mes)===mesAtual && Number(m.ano)===anoAtual);
+  const pendentes = mensalidadesMes.filter(m=>m.estado!=='pago');
+  const valorPendente = pendentes.reduce((s,m)=>s+Number(m.valor||0)-Number(m.valorPago||0),0);
+  const valorRecebido = mensalidadesMes.reduce((s,m)=>s+Number(m.valorPago||0),0);
+  const despesasMes = state.despesas.filter(d=>{ const dt=new Date(d.data); return dt.getMonth()===mesAtual && dt.getFullYear()===anoAtual && d.estado==='pago'; });
+  const totalDespesas = despesasMes.reduce((s,d)=>s+Number(d.valor||0),0);
+  const necessidadesPendentes = state.necessidades.filter(n=>n.estado!=='pago'&&n.estado!=='resolvido').length;
+  const pautasPorConfirmar = state.pautas.filter(p=>p.estado==='submetida').length;
+  const planosPorAprovar = state.planos.filter(p=>p.estado==='submetido').length;
+  const turmasSemProf = state.turmas.filter(t=>!t.professorId).length;
+
+  const porNivel = {};
+  state.alunos.forEach(a=>{ const t=state.turmas.find(x=>x.id===a.turmaId); const niv=t?t.nivel:'Sem turma'; porNivel[niv]=(porNivel[niv]||0)+1; });
+
+  return `
+  <div class="grid-cols cols-4" style="margin-bottom:18px;">
+    <div class="kpi"><div class="lbl">Alunos Activos</div><div class="val">${totalAlunos}</div><div class="sub">${state.turmas.length} turmas</div></div>
+    <div class="kpi"><div class="lbl">Recebido este mês</div><div class="val" style="color:var(--ok)">${fmtMZN(valorRecebido)}</div><div class="sub">mensalidades</div></div>
+    <div class="kpi"><div class="lbl">Pendente este mês</div><div class="val" style="color:var(--danger)">${fmtMZN(valorPendente)}</div><div class="sub">${pendentes.length} mensalidades em atraso/pendentes</div></div>
+    <div class="kpi"><div class="lbl">Despesas pagas (mês)</div><div class="val">${fmtMZN(totalDespesas)}</div><div class="sub">${necessidadesPendentes} necessidades por atender</div></div>
+  </div>
+  <div class="grid-cols cols-2">
+    <div class="card">
+      <div class="card-head"><h3>Alunos por Nível</h3></div>
+      ${Object.keys(porNivel).length? Object.entries(porNivel).map(([n,c])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #f0f2f5;">
+          <span>${esc(n)}</span><b>${c}</b></div>`).join('') : `<p class="faint">Sem alunos registados.</p>`}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Pendências de Gestão</h3></div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;"><span>👥 Funcionários activos</span><b>${totalFuncionarios}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>📚 Planos de avaliação por aprovar</span><b class="${planosPorAprovar?'badge badge-warn':''}" style="padding:${planosPorAprovar?'3px 9px':'0'}">${planosPorAprovar}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>🗂️ Pautas por confirmar</span><b class="${pautasPorConfirmar?'badge badge-warn':''}" style="padding:${pautasPorConfirmar?'3px 9px':'0'}">${pautasPorConfirmar}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>🏫 Turmas sem docente alocado</span><b class="${turmasSemProf?'badge badge-danger':''}" style="padding:${turmasSemProf?'3px 9px':'0'}">${turmasSemProf}</b></div>
+        <div style="display:flex;justify-content:space-between;"><span>📌 Necessidades por atender</span><b class="${necessidadesPendentes?'badge badge-warn':''}" style="padding:${necessidadesPendentes?'3px 9px':'0'}">${necessidadesPendentes}</b></div>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* =================================================================
+   10. ALUNOS
+================================================================== */
+function turmaLabel(t){ return t? `${t.nivel} — ${t.nome}` : "—"; }
+function alunoTurma(a){ return state.turmas.find(t=>t.id===a.turmaId); }
+
+function renderAlunos(){
+  const canEdit = canEditModule('diretor','secretaria');
+  const filtro = state.viewParams.filtroTurma||'';
+  let lista = state.alunos.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  if(filtro) lista = lista.filter(a=>a.turmaId===filtro);
+  const rows = lista.map(a=>{
+    const t=alunoTurma(a);
+    return `<tr>
+      <td><b>${esc(a.nome)}</b><div class="faint">${fmtDate(a.dataNascimento)}</div></td>
+      <td>${esc(turmaLabel(t))}</td>
+      <td>${esc(a.encarregadoNome||'—')}<div class="faint">${esc(a.encarregadoContacto||'')}</div></td>
+      <td><span class="badge ${a.estado==='inativo'?'badge-gray':'badge-ok'}">${a.estado==='inativo'?'Inactivo':'Activo'}</span></td>
+      <td class="row-actions">
+        ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editAluno('${a.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDoc('alunos','${a.id}','${esc(a.nome)}')">Remover</button>`:''}
+      </td></tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <div class="card-head">
+      <h3>Alunos (${lista.length})</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select onchange="navigate('alunos',{filtroTurma:this.value})" style="width:auto;">
+          <option value="">Todas as turmas</option>
+          ${state.turmas.map(t=>`<option value="${t.id}" ${filtro===t.id?'selected':''}>${esc(turmaLabel(t))}</option>`).join('')}
+        </select>
+        ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editAluno()">+ Novo Aluno</button>`:''}
+      </div>
+    </div>
+    ${tableShell(["Aluno","Turma","Encarregado","Estado","Acções"], rows, {emptyMsg:"Nenhum aluno registado ainda."})}
+  </div>`;
+}
+function editAluno(id){
+  const a = id ? state.alunos.find(x=>x.id===id) : {};
+  openFormModal({
+    title: id?"Editar Aluno":"Novo Aluno",
+    fields:[
+      {key:'nome',label:'Nome completo',required:true},
+      {key:'dataNascimento',label:'Data de Nascimento',type:'date',half:true},
+      {key:'genero',label:'Género',type:'select',options:['Masculino','Feminino'],half:true},
+      {key:'turmaId',label:'Turma',type:'select',required:true,options:[["",'— Seleccionar —'],...state.turmas.map(t=>[t.id,turmaLabel(t)])]},
+      {key:'encarregadoNome',label:'Nome do Encarregado de Educação',required:true},
+      {key:'encarregadoContacto',label:'Contacto do Encarregado',half:true},
+      {key:'encarregadoNuit',label:'NUIT do Encarregado (opcional)',half:true},
+      {key:'endereco',label:'Endereço'},
+      {key:'observacoes',label:'Observações (alergias, necessidades especiais, etc.)',type:'textarea'},
+      {key:'estado',label:'Estado',type:'select',options:[['ativo','Activo'],['inativo','Inactivo']]}
+    ],
+    initial:a,
+    onSubmit: async (data)=>{
+      if(id) await db.collection('alunos').doc(id).update(data);
+      else await db.collection('alunos').add({...data, estado:data.estado||'ativo', criadoEm:new Date().toISOString()});
+      toast("Aluno guardado.","ok");
+    }
+  });
+}
+function deleteDoc(col,id,label){
+  confirmAction(`Remover "${label}"? Esta acção não pode ser desfeita.`, async ()=>{
+    await db.collection(col).doc(id).delete();
+    toast("Removido.","ok");
+  });
+}
+
+/* =================================================================
+   11. MATRÍCULAS
+================================================================== */
+function renderMatriculas(){
+  const canEdit = canEditModule('diretor','secretaria');
+  const lista = state.matriculas.slice().sort((a,b)=>(b.dataMatricula||'').localeCompare(a.dataMatricula||''));
+  const rows = lista.map(m=>{
+    const a = state.alunos.find(x=>x.id===m.alunoId);
+    const t = a? alunoTurma(a):null;
+    return `<tr>
+      <td><b>${esc(a?a.nome:'Aluno removido')}</b></td>
+      <td>${esc(turmaLabel(t))}</td>
+      <td>${esc(m.anoLectivo)}</td>
+      <td>${fmtDate(m.dataMatricula)}</td>
+      <td>${fmtMZN(m.valorMatricula)}</td>
+      <td><span class="badge ${m.estado==='paga'?'badge-ok':'badge-warn'}">${m.estado==='paga'?'Paga':'Pendente'}</span></td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="printMatricula('${m.id}')">🖨️ Comprovativo</button>
+        ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editMatricula('${m.id}')">Editar</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteDoc('matriculas','${m.id}','matrícula')">Remover</button>`:''}
+      </td></tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <div class="card-head"><h3>Matrículas (${lista.length})</h3>
+      ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editMatricula()">+ Nova Matrícula</button>`:''}
+    </div>
+    ${tableShell(["Aluno","Turma","Ano Lectivo","Data","Valor","Estado","Acções"], rows, {emptyMsg:"Nenhuma matrícula registada."})}
+  </div>`;
+}
+function editMatricula(id){
+  const m = id? state.matriculas.find(x=>x.id===id) : {};
+  if(!state.alunos.length){ toast("Registe primeiro um aluno em Alunos.","err"); return; }
+  openFormModal({
+    title:id?"Editar Matrícula":"Nova Matrícula",
+    fields:[
+      {key:'alunoId',label:'Aluno',type:'select',required:true,options:[["",'— Seleccionar —'],...state.alunos.map(a=>[a.id,a.nome])]},
+      {key:'anoLectivo',label:'Ano Lectivo',required:true,half:true},
+      {key:'dataMatricula',label:'Data',type:'date',required:true,half:true},
+      {key:'valorMatricula',label:'Valor da Matrícula (MT)',type:'number',required:true,half:true},
+      {key:'formaPagamento',label:'Forma de Pagamento',type:'select',half:true,options:FORMAS_PAGAMENTO},
+      {key:'estado',label:'Estado',type:'select',options:[['pendente','Pendente'],['paga','Paga']]}
+    ],
+    initial: m.id? m : {anoLectivo:state.school?.anoLectivo||new Date().getFullYear(), dataMatricula:todayISO()},
+    onSubmit: async(data)=>{
+      if(id) await db.collection('matriculas').doc(id).update(data);
+      else await db.collection('matriculas').add({...data, criadoEm:new Date().toISOString()});
+      toast("Matrícula guardada.","ok");
+    }
+  });
+}
+function printMatricula(id){
+  const m = state.matriculas.find(x=>x.id===id);
+  const a = state.alunos.find(x=>x.id===m.alunoId);
+  const t = a?alunoTurma(a):null;
+  const html = `<div class="print-doc" id="print-area">
+    <div class="doc-head"><h1>${esc(state.school?.nome||'Colégio Mentes Brilhantes')}</h1>
+      <div class="sub">${esc(state.school?.endereco||'')} ${state.school?.telefone?(' · Tel: '+esc(state.school.telefone)):''} ${state.school?.nuit?(' · NUIT: '+esc(state.school.nuit)):''}</div>
+      <h2 style="margin-top:14px;font-size:15px;">COMPROVATIVO DE MATRÍCULA</h2></div>
+    <table class="slip-table">
+      <tr><th>Aluno</th><td>${esc(a?a.nome:'')}</td></tr>
+      <tr><th>Turma</th><td>${esc(turmaLabel(t))}</td></tr>
+      <tr><th>Ano Lectivo</th><td>${esc(m.anoLectivo)}</td></tr>
+      <tr><th>Data da Matrícula</th><td>${fmtDate(m.dataMatricula)}</td></tr>
+      <tr><th>Valor</th><td>${fmtMZN(m.valorMatricula)}</td></tr>
+      <tr><th>Forma de Pagamento</th><td>${esc(m.formaPagamento||'—')}</td></tr>
+      <tr><th>Estado</th><td>${m.estado==='paga'?'Paga':'Pendente'}</td></tr>
+    </table>
+    <div class="sign-row">
+      <div class="sign-block">Encarregado de Educação</div>
+      <div class="sign-block">Secretaria / Direcção</div>
+    </div>
+  </div>`;
+  printHtml(html);
+}
+function printHtml(html){
+  let area = document.getElementById('print-area-holder');
+  if(!area){ area=document.createElement('div'); area.id='print-area-holder'; document.body.appendChild(area); }
+  area.innerHTML = html;
+  setTimeout(()=>{ window.print(); }, 80);
+}
+
+/* =================================================================
+   12. MENSALIDADES
+   Janela normal de pagamento: dia 20 do mês corrente a dia 5 do mês
+   seguinte. Após essa data, multa de atraso (%). Desconto automático
+   para encarregados com vários educandos, e desconto por adiantamento
+   de 2+ mensalidades — ambos configuráveis pelo Director.
+================================================================== */
+function getDescontos(){ return state.descontos || DEFAULT_DESCONTOS; }
+function getPrecoMensalidade(nivel){
+  const p = state.precos.find(x=>x.nivel===nivel);
+  return p ? Number(p.valor) : null;
+}
+function diaLimiteMensalidade(mes,ano){
+  const d = getDescontos();
+  let m = Number(mes)+1, y = Number(ano);
+  if(m>11){ m=0; y++; }
+  return new Date(y, m, d.diaLimitePagamento||5, 23,59,59);
+}
+function mensalidadeEmAtraso(m){
+  if(m.estado==='pago') return false;
+  return new Date() > diaLimiteMensalidade(m.mes,m.ano);
+}
+function valorComMulta(m){
+  const base = Number(m.valor||0);
+  if(mensalidadeEmAtraso(m)) return +(base*(1+(getDescontos().multaAtrasoPct||15)/100)).toFixed(2);
+  return base;
+}
+function contarEducandosEncarregado(aluno){
+  const key = (aluno.encarregadoContacto||'').trim().toLowerCase();
+  if(!key) return 1;
+  return state.alunos.filter(a=>a.estado!=='inativo' && (a.encarregadoContacto||'').trim().toLowerCase()===key).length;
+}
+function descontoIrmaosPercentual(aluno){
+  const d = getDescontos();
+  return contarEducandosEncarregado(aluno) >= (d.irmaosMinQtd||3) ? (d.irmaosPercentual||0) : 0;
+}
+function renderMensalidades(){
+  const canEdit = canEditModule('diretor','secretaria','financeiro');
+  const tab = state.viewParams.tab || 'lista';
+  return `<div class="tabs">
+    <div class="tab ${tab==='lista'?'active':''}" onclick="navigate('mensalidades',{tab:'lista'})">Mensalidades do Mês</div>
+    <div class="tab ${tab==='precos'?'active':''}" onclick="navigate('mensalidades',{tab:'precos'})">Preços & Descontos</div>
+  </div>
+  ${tab==='precos'? renderPrecosTab() : renderMensalidadesLista(canEdit)}`;
+}
+function renderMensalidadesLista(canEdit){
+  const vp = state.viewParams;
+  const mes = vp.mes!==undefined? Number(vp.mes) : new Date().getMonth();
+  const ano = vp.ano!==undefined? Number(vp.ano) : new Date().getFullYear();
+  const lista = state.mensalidades.filter(m=>Number(m.mes)===mes && Number(m.ano)===ano)
+    .sort((a,b)=>{
+      const an=state.alunos.find(x=>x.id===a.alunoId), bn=state.alunos.find(x=>x.id===b.alunoId);
+      return (an?.nome||'').localeCompare(bn?.nome||'');
+    });
+  const totalEsperado = lista.reduce((s,m)=>s+valorComMulta(m),0);
+  const totalPago = lista.reduce((s,m)=>s+Number(m.valorPago||0),0);
+  const d = getDescontos();
+  const rows = lista.map(m=>{
+    const a=state.alunos.find(x=>x.id===m.alunoId);
+    const t = a?alunoTurma(a):null;
+    const atraso = mensalidadeEmAtraso(m);
+    const devido = valorComMulta(m);
+    const saldo = devido-Number(m.valorPago||0);
+    let badge = m.estado==='pago'?['badge-ok','Pago'] : atraso?['badge-danger',`Atrasada +${d.multaAtrasoPct||15}%`] : (Number(m.valorPago||0)>0?['badge-info','Parcial']:['badge-warn','Pendente']);
+    return `<tr>
+      <td><b>${esc(a?a.nome:'—')}</b>${m.descontoIrmaosPct?`<div class="faint">desc. irmãos ${m.descontoIrmaosPct}%</div>`:''}${m.pagoAntecipado?`<div class="faint">pago antecipado</div>`:''}</td>
+      <td>${esc(turmaLabel(t))}</td>
+      <td>${fmtMZN(m.valor)}${atraso?`<div class="faint" style="color:var(--danger)">c/ multa: ${fmtMZN(devido)}</div>`:''}</td>
+      <td>${fmtMZN(m.valorPago||0)}</td>
+      <td><span class="badge ${badge[0]}">${badge[1]}</span></td>
+      <td class="row-actions">
+        ${canEdit && m.estado!=='pago' ? `<button class="btn btn-ok btn-sm" onclick="registarPagamentoMensalidade('${m.id}')">Registar Pagamento</button>`:''}
+        <button class="btn btn-outline btn-sm" onclick="printRecibo('${m.id}')">🖨️ Recibo</button>
+        ${canEdit?`<button class="btn btn-danger btn-sm" onclick="deleteDoc('mensalidades','${m.id}','mensalidade')">Remover</button>`:''}
+      </td></tr>`;
+  }).join('');
+  return `
+  <div class="grid-cols cols-3" style="margin-bottom:16px;">
+    <div class="kpi"><div class="lbl">Total Esperado (c/ multas)</div><div class="val">${fmtMZN(totalEsperado)}</div></div>
+    <div class="kpi"><div class="lbl">Total Recebido</div><div class="val" style="color:var(--ok)">${fmtMZN(totalPago)}</div></div>
+    <div class="kpi"><div class="lbl">Em Falta</div><div class="val" style="color:var(--danger)">${fmtMZN(totalEsperado-totalPago)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h3>Mensalidades — ${MESES[mes]} de ${ano}</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select onchange="navigate('mensalidades',{mes:this.value,ano:${ano}})" style="width:auto;">
+          ${MESES.map((m,i)=>`<option value="${i}" ${i===mes?'selected':''}>${m}</option>`).join('')}
+        </select>
+        <select onchange="navigate('mensalidades',{mes:${mes},ano:this.value})" style="width:auto;">
+          ${[ano-1,ano,ano+1].map(y=>`<option value="${y}" ${y===ano?'selected':''}>${y}</option>`).join('')}
+        </select>
+        ${canEdit?`<button class="btn btn-accent btn-sm" onclick="gerarMensalidadesMes(${mes},${ano})">⚡ Gerar do Mês</button>
+        <button class="btn btn-primary btn-sm" onclick="editMensalidadeManual(${mes},${ano})">+ Lançar Manual</button>
+        <button class="btn btn-outline btn-sm" onclick="pagamentoAntecipado()">📅 Pagamento Antecipado</button>`:''}
+      </div>
+    </div>
+    <p class="faint" style="margin-bottom:10px;">Janela normal de pagamento: dia ${d.diaAberturaPagamento||20} do mês corrente ao dia ${d.diaLimitePagamento||5} do mês seguinte. Após essa data aplica-se automaticamente uma multa de ${d.multaAtrasoPct||15}%.</p>
+    ${tableShell(["Aluno","Turma","Valor","Pago","Estado","Acções"], rows, {emptyMsg:"Sem mensalidades lançadas para este mês. Use 'Gerar do Mês'."})}
+  </div>`;
+}
+function gerarMensalidadesMes(mes,ano){
+  openFormModal({
+    title:"Gerar Mensalidades do Mês",
+    fields:[
+      {key:'turmaId',label:'Aplicar apenas a uma turma (opcional)',type:'select',options:[["","Todas as turmas"],...state.turmas.map(t=>[t.id,turmaLabel(t)])]},
+      {key:'valorFallback',label:'Valor a usar se o nível não tiver preço definido (MT)',type:'number',help:'Defina os preços por nível em "Preços & Descontos" para evitar preencher isto sempre.'}
+    ],
+    submitLabel:"Gerar",
+    onSubmit: async(data)=>{
+      let alunosAlvo = state.alunos.filter(a=>a.estado!=='inativo');
+      if(data.turmaId) alunosAlvo = alunosAlvo.filter(a=>a.turmaId===data.turmaId);
+      const existentes = new Set(state.mensalidades.filter(m=>Number(m.mes)===mes&&Number(m.ano)===ano).map(m=>m.alunoId));
+      const batch = db.batch();
+      let count=0, semPreco=0;
+      alunosAlvo.forEach(a=>{
+        if(existentes.has(a.id)) return;
+        const t = alunoTurma(a);
+        const precoBase = getPrecoMensalidade(t?.nivel) ?? (data.valorFallback||null);
+        if(!precoBase){ semPreco++; return; }
+        const descIrmaos = descontoIrmaosPercentual(a);
+        const valorFinal = +(precoBase*(1-descIrmaos/100)).toFixed(2);
+        const ref = db.collection('mensalidades').doc();
+        batch.set(ref,{alunoId:a.id, mes, ano, valor:valorFinal, valorBase:precoBase, descontoIrmaosPct:descIrmaos||null, valorPago:0, estado:'pendente', criadoEm:new Date().toISOString()});
+        count++;
+      });
+      await batch.commit();
+      toast(count+" mensalidade(s) gerada(s)."+(semPreco?` ${semPreco} aluno(s) ignorado(s) por falta de preço definido para o nível.`:''),"ok");
+    }
+  });
+}
+function editMensalidadeManual(mes,ano){
+  openFormModal({
+    title:"Lançar Mensalidade Manual",
+    fields:[
+      {key:'alunoId',label:'Aluno',type:'select',required:true,options:[["",'— Seleccionar —'],...state.alunos.map(a=>[a.id,a.nome])]},
+      {key:'valor',label:'Valor (MT)',type:'number',required:true}
+    ],
+    onSubmit: async(data)=>{
+      await db.collection('mensalidades').add({...data, mes, ano, valorPago:0, estado:'pendente', criadoEm:new Date().toISOString()});
+      toast("Mensalidade lançada.","ok");
+    }
+  });
+}
+function registarPagamentoMensalidade(id){
+  const m = state.mensalidades.find(x=>x.id===id);
+  const atraso = mensalidadeEmAtraso(m);
+  const devido = valorComMulta(m);
+  openFormModal({
+    title:"Registar Pagamento de Mensalidade",
+    fields:[
+      {key:'valorPago',label:'Valor pago (MT)',type:'number',required:true,help: atraso? `Inclui multa de atraso de ${getDescontos().multaAtrasoPct||15}% (limite era ${fmtDate(diaLimiteMensalidade(m.mes,m.ano))}).` : undefined},
+      {key:'formaPagamento',label:'Forma de Pagamento',type:'select',required:true,options:FORMAS_PAGAMENTO},
+      {key:'dataPagamento',label:'Data do Pagamento',type:'date',required:true}
+    ],
+    initial:{valorPago:+(devido-Number(m.valorPago||0)).toFixed(2), dataPagamento:todayISO()},
+    submitLabel:"Confirmar Pagamento",
+    onSubmit: async(data)=>{
+      const novoPago = Number(m.valorPago||0)+Number(data.valorPago);
+      const estado = novoPago >= devido ? 'pago' : 'pendente';
+      await db.collection('mensalidades').doc(id).update({
+        valorPago:novoPago, formaPagamento:data.formaPagamento, dataPagamento:data.dataPagamento, estado,
+        multaAplicada: atraso, valorComMultaNoPagamento: atraso?devido:null
+      });
+      toast("Pagamento registado."+(atraso?" (com multa de atraso)":""),"ok");
+    }
+  });
+}
+function pagamentoAntecipado(){
+  if(!state.alunos.length){ toast("Registe primeiro um aluno.","err"); return; }
+  const now = new Date();
+  openFormModal({
+    title:"Pagamento Antecipado de Mensalidades",
+    fields:[
+      {key:'alunoId',label:'Aluno',type:'select',required:true,options:[["",'— Seleccionar —'],...state.alunos.map(a=>[a.id,a.nome])]},
+      {key:'mesInicio',label:'Mês inicial',type:'select',required:true,options:MESES.map((m,i)=>[i,m]),half:true},
+      {key:'anoInicio',label:'Ano inicial',type:'number',required:true,half:true},
+      {key:'quantidadeMeses',label:'Nº de meses a pagar adiantado (mín. 2)',type:'number',required:true,half:true},
+      {key:'formaPagamento',label:'Forma de Pagamento',type:'select',required:true,options:FORMAS_PAGAMENTO,half:true},
+      {key:'dataPagamento',label:'Data do Pagamento',type:'date',required:true}
+    ],
+    initial:{mesInicio:now.getMonth(),anoInicio:now.getFullYear(),quantidadeMeses:2,dataPagamento:todayISO()},
+    submitLabel:"Registar Pagamento Antecipado",
+    onSubmit: async(data)=>{
+      const qtd = Number(data.quantidadeMeses);
+      if(qtd<2){ throw new Error("A quantidade mínima para pagamento adiantado é 2 mensalidades."); }
+      const aluno = state.alunos.find(a=>a.id===data.alunoId);
+      const turma = alunoTurma(aluno);
+      const precoBase = getPrecoMensalidade(turma?.nivel);
+      if(!precoBase){ throw new Error(`Defina primeiro o preço da mensalidade para o nível "${turma?.nivel||'—'}" em Preços & Descontos.`); }
+      const descIrmaos = descontoIrmaosPercentual(aluno);
+      const precoComIrmaos = precoBase*(1-descIrmaos/100);
+      const d = getDescontos();
+      const descAdiant = qtd>=(d.adiantamentoMinMeses||2) ? (d.adiantamentoPercentual||0) : 0;
+      const valorMensalFinal = +(precoComIrmaos*(1-descAdiant/100)).toFixed(2);
+      const batch = db.batch();
+      let mes=Number(data.mesInicio), ano=Number(data.anoInicio);
+      for(let i=0;i<qtd;i++){
+        const existente = state.mensalidades.find(m=>m.alunoId===aluno.id && Number(m.mes)===mes && Number(m.ano)===ano);
+        const payload = {alunoId:aluno.id, mes, ano, valor:valorMensalFinal, valorBase:precoBase,
+          descontoIrmaosPct:descIrmaos||null, descontoAdiantamentoPct:descAdiant||null,
+          valorPago:valorMensalFinal, formaPagamento:data.formaPagamento, dataPagamento:data.dataPagamento,
+          estado:'pago', pagoAntecipado:true};
+        const ref = existente ? db.collection('mensalidades').doc(existente.id) : db.collection('mensalidades').doc();
+        batch.set(ref,payload,{merge:true});
+        mes++; if(mes>11){ mes=0; ano++; }
+      }
+      await batch.commit();
+      toast(`${qtd} mensalidade(s) pagas antecipadamente`+(descAdiant?` com ${descAdiant}% de desconto`:'')+".","ok");
+    }
+  });
+}
+
+/* --- Preços por nível & política de descontos (apenas Director edita) --- */
+function renderPrecosTab(){
+  const canEdit = state.role==='diretor';
+  const d = getDescontos();
+  const precosOrdenados = state.precos.slice().sort((a,b)=>NIVEIS_TURMA.indexOf(a.nivel)-NIVEIS_TURMA.indexOf(b.nivel));
+  const rows = precosOrdenados.map(p=>`<tr><td><b>${esc(p.nivel)}</b></td><td>${fmtMZN(p.valor)}</td>
+    <td class="row-actions">${canEdit?`<button class="btn btn-outline btn-sm" onclick="editPrecoMensalidade('${p.id}')">Editar</button>
+    <button class="btn btn-danger btn-sm" onclick="deleteDoc('precosMensalidades','${p.id}','preço')">Remover</button>`:''}</td></tr>`).join('');
+  return `
+  <div class="grid-cols cols-2">
+    <div class="card">
+      <div class="card-head"><h3>Preços da Mensalidade por Nível (${state.precos.length})</h3>
+        ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editPrecoMensalidade()">+ Definir Preço</button>`:''}</div>
+      ${tableShell(["Nível","Valor Mensal","Acções"], rows, {emptyMsg:"Nenhum preço definido ainda. Defina o valor da mensalidade para cada nível/classe."})}
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Política de Descontos & Multa</h3></div>
+      ${canEdit?`
+      <div class="field-row">
+        <div class="field"><label>Dia de abertura do pagamento</label><input id="pd-abertura" type="number" min="1" max="28" value="${d.diaAberturaPagamento}"></div>
+        <div class="field"><label>Dia limite (mês seguinte)</label><input id="pd-limite" type="number" min="1" max="28" value="${d.diaLimitePagamento}"></div>
+      </div>
+      <div class="field"><label>Multa de atraso (%)</label><input id="pd-multa" type="number" step="0.5" value="${d.multaAtrasoPct}"></div>
+      <hr style="border:none;border-top:1px solid var(--border);margin:14px 0;">
+      <div class="field-row">
+        <div class="field"><label>Nº mínimo de educandos p/ desconto de irmãos</label><input id="pd-irmaos-qtd" type="number" min="2" value="${d.irmaosMinQtd}"></div>
+        <div class="field"><label>Desconto de irmãos (%)</label><input id="pd-irmaos-pct" type="number" step="0.5" value="${d.irmaosPercentual}"></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Nº mínimo de meses p/ desconto de adiantamento</label><input id="pd-adiant-meses" type="number" min="2" value="${d.adiantamentoMinMeses}"></div>
+        <div class="field"><label>Desconto de adiantamento (%)</label><input id="pd-adiant-pct" type="number" step="0.5" value="${d.adiantamentoPercentual}"></div>
+      </div>
+      <button class="btn btn-primary" onclick="guardarPoliticaDescontos()">Guardar Política</button>
+      `:`
+      <p>Encarregados com ${d.irmaosMinQtd}+ educandos: <b>${d.irmaosPercentual}% de desconto</b></p>
+      <p>Pagamento de ${d.adiantamentoMinMeses}+ mensalidades adiantadas: <b>${d.adiantamentoPercentual}% de desconto</b></p>
+      <p>Multa por atraso (após dia ${d.diaLimitePagamento}): <b>${d.multaAtrasoPct}%</b></p>
+      <p class="faint">Apenas o Director pode alterar esta política.</p>
+      `}
+    </div>
+  </div>`;
+}
+function editPrecoMensalidade(id){
+  const p = id? state.precos.find(x=>x.id===id) : {};
+  const niveisComPreco = new Set(state.precos.filter(x=>x.id!==id).map(x=>x.nivel));
+  openFormModal({
+    title: id?"Editar Preço":"Definir Preço de Mensalidade",
+    fields:[
+      {key:'nivel',label:'Nível/Classe',type:'select',required:true,options:NIVEIS_TURMA.filter(n=>!niveisComPreco.has(n)||n===p.nivel)},
+      {key:'valor',label:'Valor Mensal (MT)',type:'number',required:true}
+    ],
+    initial:p,
+    onSubmit: async(data)=>{
+      if(id) await db.collection('precosMensalidades').doc(id).update(data);
+      else await db.collection('precosMensalidades').add(data);
+      toast("Preço guardado.","ok");
+    }
+  });
+}
+async function guardarPoliticaDescontos(){
+  const data = {
+    diaAberturaPagamento:Number(document.getElementById('pd-abertura').value),
+    diaLimitePagamento:Number(document.getElementById('pd-limite').value),
+    multaAtrasoPct:Number(document.getElementById('pd-multa').value),
+    irmaosMinQtd:Number(document.getElementById('pd-irmaos-qtd').value),
+    irmaosPercentual:Number(document.getElementById('pd-irmaos-pct').value),
+    adiantamentoMinMeses:Number(document.getElementById('pd-adiant-meses').value),
+    adiantamentoPercentual:Number(document.getElementById('pd-adiant-pct').value)
+  };
+  await db.collection('config').doc('descontos').set(data,{merge:true});
+  state.descontos = data;
+  toast("Política de descontos actualizada.","ok");
+}
+function printRecibo(id){
+  const m = state.mensalidades.find(x=>x.id===id);
+  const a = state.alunos.find(x=>x.id===m.alunoId);
+  const multaLinha = m.multaAplicada ? `<tr><th>Multa de Atraso</th><td>${fmtMZN((m.valorComMultaNoPagamento||valorComMulta(m))-Number(m.valor||0))}</td></tr>` : '';
+  const descLinha = m.descontoIrmaosPct ? `<tr><th>Desconto (vários educandos)</th><td>${m.descontoIrmaosPct}%</td></tr>` : (m.descontoAdiantamentoPct ? `<tr><th>Desconto (pagamento adiantado)</th><td>${m.descontoAdiantamentoPct}%</td></tr>` : '');
+  const html = `<div class="print-doc" id="print-area">
+    <div class="doc-head"><h1>${esc(state.school?.nome||'Colégio Mentes Brilhantes')}</h1>
+    <div class="sub">${esc(state.school?.endereco||'')} ${state.school?.nuit?(' · NUIT: '+esc(state.school.nuit)):''}</div>
+    <h2 style="margin-top:14px;font-size:15px;">RECIBO DE MENSALIDADE</h2></div>
+    <table class="slip-table">
+      <tr><th>Aluno</th><td>${esc(a?a.nome:'')}</td></tr>
+      <tr><th>Referente a</th><td>${MESES[m.mes]} de ${m.ano}</td></tr>
+      <tr><th>Valor da Mensalidade</th><td>${fmtMZN(m.valor)}</td></tr>
+      ${descLinha}${multaLinha}
+      <tr><th>Valor Pago</th><td>${fmtMZN(m.valorPago||0)}</td></tr>
+      <tr><th>Forma de Pagamento</th><td>${esc(m.formaPagamento||'—')}</td></tr>
+      <tr><th>Data</th><td>${fmtDate(m.dataPagamento)}</td></tr>
+      <tr><th>Estado</th><td>${m.estado==='pago'?'PAGO':(mensalidadeEmAtraso(m)?'ATRASADO':'PENDENTE')}</td></tr>
+    </table>
+    <div class="sign-row"><div class="sign-block">Caixa / Financeiro</div><div class="sign-block">Carimbo do Colégio</div></div>
+  </div>`;
+  printHtml(html);
+}
+
+/* =================================================================
+   13. FUNCIONÁRIOS
+================================================================== */
+function renderFuncionarios(){
+  const canEdit = canEditModule('diretor','rh');
+  const lista = state.funcionarios.slice().sort((a,b)=>(a.nome||'').localeCompare(b.nome||''));
+  const rows = lista.map(f=>`<tr>
+    <td><b>${esc(f.nome)}</b><div class="faint">${esc(f.contacto||'')}</div></td>
+    <td>${esc(f.funcao)}</td>
+    <td>${fmtDate(f.dataAdmissao)}</td>
+    <td>${fmtMZN(f.salarioBase)}</td>
+    <td><span class="badge ${f.estado==='inativo'?'badge-gray':'badge-ok'}">${f.estado==='inativo'?'Inactivo':'Activo'}</span></td>
+    <td class="row-actions">
+      ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editFuncionario('${f.id}')">Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDoc('funcionarios','${f.id}','${esc(f.nome)}')">Remover</button>`:''}
+      <button class="btn btn-outline btn-sm" onclick="navigate('contratos',{funcionarioId:'${f.id}'})">📄 Contrato</button>
+    </td></tr>`).join('');
+  return `
+  <div class="card">
+    <div class="card-head"><h3>Funcionários (${lista.length})</h3>
+      ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editFuncionario()">+ Novo Funcionário</button>`:''}
+    </div>
+    ${tableShell(["Nome","Função","Admissão","Salário Base","Estado","Acções"], rows, {emptyMsg:"Nenhum funcionário registado — inclua professores, cozinheiro(a), guarda, educadores, etc."})}
+  </div>`;
+}
+function editFuncionario(id){
+  const f = id? state.funcionarios.find(x=>x.id===id) : {};
+  openFormModal({
+    title:id?"Editar Funcionário":"Novo Funcionário",
+    wide:true,
+    fields:[
+      {key:'nome',label:'Nome completo',required:true},
+      {key:'funcao',label:'Função',type:'select',required:true,options:FUNCOES_STAFF,half:true},
+      {key:'dataAdmissao',label:'Data de Admissão',type:'date',required:true,half:true},
+      {key:'contacto',label:'Contacto (telefone)',half:true},
+      {key:'email',label:'Email',half:true},
+      {key:'numeroBI',label:'Nº do BI / Doc. Identificação',half:true},
+      {key:'nuit',label:'NUIT',half:true},
+      {key:'numeroINSS',label:'Nº de Inscrição INSS',half:true},
+      {key:'salarioBase',label:'Salário Base (MT)',type:'number',required:true,half:true},
+      {key:'tipoContrato',label:'Tipo de Contrato',type:'select',half:true,options:['Efectivo','Termo Certo','Termo Incerto','Período de Experiência']},
+      {key:'endereco',label:'Endereço'},
+      {key:'estado',label:'Estado',type:'select',options:[['ativo','Activo'],['inativo','Inactivo']]}
+    ],
+    initial:f,
+    onSubmit: async(data)=>{
+      if(id) await db.collection('funcionarios').doc(id).update(data);
+      else await db.collection('funcionarios').add({...data, estado:data.estado||'ativo', criadoEm:new Date().toISOString()});
+      toast("Funcionário guardado.","ok");
+    }
+  });
+}
+
+/* =================================================================
+   14. CONTRATOS (modelos por função + geração/impressão)
+================================================================== */
+const CONTRATO_PLACEHOLDER_HELP = "Use marcadores: {{NOME}} {{FUNCAO}} {{DATA_ADMISSAO}} {{SALARIO}} {{NUMERO_BI}} {{NUIT}} {{ESCOLA}} {{DATA_HOJE}} {{TIPO_CONTRATO}}";
+const DEFAULT_CONTRATO_TEXT = `Entre {{ESCOLA}}, adiante designada "Primeira Outorgante", e {{NOME}}, portador(a) do documento de identificação nº {{NUMERO_BI}}, adiante designado(a) "Segundo(a) Outorgante", é celebrado o presente CONTRATO INDIVIDUAL DE TRABALHO, nos termos da Lei do Trabalho de Moçambique, mediante as seguintes cláusulas:
+
+CLÁUSULA 1ª (Objecto)
+O(A) Segundo(a) Outorgante é admitido(a) para exercer as funções de {{FUNCAO}}, sob a autoridade e direcção da Primeira Outorgante.
+
+CLÁUSULA 2ª (Modalidade)
+O presente contrato é celebrado na modalidade de {{TIPO_CONTRATO}}, com início em {{DATA_ADMISSAO}}.
+
+CLÁUSULA 3ª (Remuneração)
+Pelos serviços prestados, o(a) Segundo(a) Outorgante receberá a remuneração mensal ilíquida de {{SALARIO}}, sujeita aos descontos legais aplicáveis (INSS e IRPS).
+
+CLÁUSULA 4ª (Deveres)
+O(A) Segundo(a) Outorgante obriga-se a cumprir com zelo, assiduidade e pontualidade as tarefas inerentes às suas funções, bem como as normas internas do Colégio.
+
+CLÁUSULA 5ª (Disposições Finais)
+Em tudo o que não estiver previsto neste contrato, aplica-se o disposto na Lei nº 13/2023, de 25 de Agosto (Lei do Trabalho) e demais legislação laboral vigente em Moçambique.
+
+Feito em ${state?.school?.endereco||''}, aos {{DATA_HOJE}}.`;
+
+function renderContratos(){
+  const canEdit = canEditModule('diretor','rh');
+  const funcionarioIdSel = state.viewParams.funcionarioId||'';
+  const modelosRows = state.contratosModelos.map(c=>`<tr>
+    <td><b>${esc(c.funcao)}</b></td>
+    <td class="faint">${esc((c.texto||'').slice(0,60))}…</td>
+    <td class="row-actions">
+      ${canEdit?`<button class="btn btn-outline btn-sm" onclick="editModeloContrato('${c.id}')">Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDoc('contratosModelos','${c.id}','modelo')">Remover</button>`:''}
+    </td></tr>`).join('');
+  return `
+  <div class="grid-cols cols-2">
+    <div class="card">
+      <div class="card-head"><h3>🖨️ Gerar Contrato para Impressão</h3></div>
+      <div class="field"><label>Funcionário</label>
+        <select id="ctr-func">
+          <option value="">— Seleccionar —</option>
+          ${state.funcionarios.map(f=>`<option value="${f.id}" ${funcionarioIdSel===f.id?'selected':''}>${esc(f.nome)} (${esc(f.funcao)})</option>`).join('')}
+        </select>
+      </div>
+      <p class="faint">O modelo é escolhido automaticamente conforme a função do funcionário. O RH pode confirmar o valor da remuneração antes de imprimir.</p>
+      <button class="btn btn-primary btn-block" onclick="gerarContrato()">Gerar Minuta</button>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Modelos de Contrato por Função (${state.contratosModelos.length})</h3>
+        ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editModeloContrato()">+ Novo Modelo</button>`:''}
+      </div>
+      ${tableShell(["Função","Prévia","Acções"], modelosRows, {emptyMsg:"Nenhum modelo criado. Crie um modelo para cada função (Professor, Guarda, Cozinheiro, etc.) — ao gerar, o nome e outros dados do funcionário são preenchidos automaticamente."})}
+    </div>
+  </div>`;
+}
+function editModeloContrato(id){
+  const c = id? state.contratosModelos.find(x=>x.id===id) : {};
+  openFormModal({
+    title:id?"Editar Modelo de Contrato":"Novo Modelo de Contrato",
+    wide:true,
+    fields:[
+      {key:'funcao',label:'Função aplicável',type:'select',required:true,options:FUNCOES_STAFF},
+      {key:'texto',label:'Texto do Contrato',type:'textarea',required:true,rows:16,help:CONTRATO_PLACEHOLDER_HELP}
+    ],
+    initial: c.id? c : {texto:DEFAULT_CONTRATO_TEXT},
+    onSubmit: async(data)=>{
+      if(id) await db.collection('contratosModelos').doc(id).update(data);
+      else await db.collection('contratosModelos').add(data);
+      toast("Modelo guardado.","ok");
+    }
+  });
+}
+function gerarContrato(){
+  const fid = document.getElementById('ctr-func').value;
+  if(!fid){ toast("Seleccione um funcionário.","err"); return; }
+  const f = state.funcionarios.find(x=>x.id===fid);
+  let modelo = state.contratosModelos.find(m=>m.funcao===f.funcao);
+  if(!modelo){
+    toast("Não existe modelo para a função '"+f.funcao+"'. Crie um modelo primeiro.","err");
+    return;
+  }
+  openFormModal({
+    title:"Confirmar dados antes de imprimir",
+    fields:[
+      {key:'salario',label:'Valor da Remuneração (MT)',type:'number',required:true},
+      {key:'tipoContrato',label:'Tipo de Contrato',type:'select',options:['Efectivo','Termo Certo','Termo Incerto','Período de Experiência']}
+    ],
+    initial:{salario:f.salarioBase||0, tipoContrato:f.tipoContrato||'Efectivo'},
+    submitLabel:"Gerar e Imprimir",
+    onSubmit: async(data)=>{
+      let texto = modelo.texto;
+      const map = {
+        NOME:f.nome, FUNCAO:f.funcao, DATA_ADMISSAO:fmtDate(f.dataAdmissao),
+        SALARIO:fmtMZN(data.salario), NUMERO_BI:f.numeroBI||'—', NUIT:f.nuit||'—',
+        ESCOLA:state.school?.nome||'Colégio Mentes Brilhantes', DATA_HOJE:fmtDate(new Date()),
+        TIPO_CONTRATO:data.tipoContrato
+      };
+      Object.keys(map).forEach(k=>{ texto = texto.split('{{'+k+'}}').join(map[k]); });
+      if(f.salarioBase!==data.salario){ await db.collection('funcionarios').doc(f.id).update({salarioBase:data.salario, tipoContrato:data.tipoContrato}); }
+      const html = `<div class="print-doc" id="print-area">
+        <div class="doc-head"><h1>${esc(state.school?.nome||'Colégio Mentes Brilhantes')}</h1>
+        <div class="sub">${esc(state.school?.endereco||'')}</div></div>
+        <div style="white-space:pre-wrap;line-height:1.7;font-size:13.5px;">${esc(texto)}</div>
+        <div class="sign-row"><div class="sign-block">Primeira Outorgante (Colégio)</div><div class="sign-block">Segundo(a) Outorgante (${esc(f.nome)})</div></div>
+      </div>`;
+      printHtml(html);
+    }
+  });
+}
+
+/* =================================================================
+   15. ASSIDUIDADE
+================================================================== */
+function renderAssiduidade(){
+  const canEdit = canEditModule('diretor','rh');
+  const data = state.viewParams.data || todayISO();
+  const registosDoDia = state.assiduidade.filter(a=>a.data===data);
+  const rows = state.funcionarios.filter(f=>f.estado!=='inativo').map(f=>{
+    const reg = registosDoDia.find(r=>r.funcionarioId===f.id);
+    const estado = reg?.estado || null;
+    const badgeMap = {presente:['badge-ok','Presente'],falta:['badge-danger','Falta'],atraso:['badge-warn','Atraso'],justificada:['badge-info','Falta Justificada']};
+    return `<tr>
+      <td><b>${esc(f.nome)}</b><div class="faint">${esc(f.funcao)}</div></td>
+      <td>${estado?`<span class="badge ${badgeMap[estado][0]}">${badgeMap[estado][1]}</span>`:'<span class="faint">Por marcar</span>'}</td>
+      <td class="row-actions">
+        ${canEdit? ['presente','atraso','falta','justificada'].map(e=>
+          `<button class="btn btn-sm ${estado===e?'btn-primary':'btn-outline'}" onclick="marcarAssiduidade('${f.id}','${data}','${e}')">${badgeMap[e][1]}</button>`).join('') : ''}
+      </td></tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <div class="card-head">
+      <h3>Assiduidade — ${fmtDate(data)}</h3>
+      <input type="date" value="${data}" style="width:auto;" onchange="navigate('assiduidade',{data:this.value})">
+    </div>
+    ${tableShell(["Funcionário","Estado","Marcar"], rows, {emptyMsg:"Nenhum funcionário activo registado."})}
+  </div>`;
+}
+async function marcarAssiduidade(funcionarioId,data,estado){
+  const existing = state.assiduidade.find(a=>a.funcionarioId===funcionarioId && a.data===data);
+  if(existing) await db.collection('assiduidade').doc(existing.id).update({estado});
+  else await db.collection('assiduidade').add({funcionarioId,data,estado,registadoEm:new Date().toISOString()});
+}
+
+/* =================================================================
+   16. ADIANTAMENTOS
+================================================================== */
+function renderAdiantamentos(){
+  const canEdit = canEditModule('diretor','rh');
+  const lista = state.adiantamentos.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const rows = lista.map(a=>{
+    const f = state.funcionarios.find(x=>x.id===a.funcionarioId);
+    return `<tr>
+      <td><b>${esc(f?f.nome:'—')}</b></td>
+      <td>${fmtDate(a.data)}</td>
+      <td>${fmtMZN(a.valor)}</td>
+      <td>${esc(a.motivo||'—')}</td>
+      <td>${MESES[a.mesDesconto]||'—'}/${a.anoDesconto||''}</td>
+      <td><span class="badge ${a.estado==='descontado'?'badge-ok':'badge-warn'}">${a.estado==='descontado'?'Descontado':'Pendente'}</span></td>
+      <td class="row-actions">${canEdit?`<button class="btn btn-danger btn-sm" onclick="deleteDoc('adiantamentos','${a.id}','adiantamento')">Remover</button>`:''}</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div class="card">
+    <div class="card-head"><h3>Adiantamentos de Salário (${lista.length})</h3>
+      ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editAdiantamento()">+ Novo Adiantamento</button>`:''}
+    </div>
+    ${tableShell(["Funcionário","Data","Valor","Motivo","Descontar em","Estado","Acções"], rows, {emptyMsg:"Nenhum adiantamento registado."})}
+  </div>`;
+}
+function editAdiantamento(){
+  if(!state.funcionarios.length){ toast("Registe primeiro um funcionário.","err"); return; }
+  const now=new Date();
+  openFormModal({
+    title:"Novo Adiantamento",
+    fields:[
+      {key:'funcionarioId',label:'Funcionário',type:'select',required:true,options:[["",'— Seleccionar —'],...state.funcionarios.map(f=>[f.id,f.nome])]},
+      {key:'data',label:'Data',type:'date',required:true,half:true},
+      {key:'valor',label:'Valor (MT)',type:'number',required:true,half:true},
+      {key:'motivo',label:'Motivo'},
+      {key:'mesDesconto',label:'Descontar no mês',type:'select',half:true,options:MESES.map((m,i)=>[i,m])},
+      {key:'anoDesconto',label:'Ano',type:'number',half:true}
+    ],
+    initial:{data:todayISO(),mesDesconto:now.getMonth(),anoDesconto:now.getFullYear()},
+    onSubmit: async(data)=>{
+      data.mesDesconto = Number(data.mesDesconto);
+      await db.collection('adiantamentos').add({...data, estado:'pendente', criadoEm:new Date().toISOString()});
+      toast("Adiantamento registado.","ok");
+    }
+  });
+}
+
+/* =================================================================
+   17. FOLHA DE SALÁRIO  (INSS + IRPS conforme legislação moçambicana)
+================================================================== */
+function calcIRPS(baseTributavel){
+  const legal = state.legal || DEFAULT_LEGAL;
+  const tributavel = Math.max(0, baseTributavel - (legal.deducaoPessoalMensal||0));
+  const tabela = legal.irpsTable || DEFAULT_IRPS_TABLE;
+  for(const escalao of tabela){
+    if(tributavel <= escalao.ate){
+      const val = tributavel*escalao.taxa - escalao.deduzir;
+      return Math.max(0, val);
+    }
+  }
+  return 0;
+}
+function calcFolhaFuncionario(f, mes, ano){
+  const legal = state.legal || DEFAULT_LEGAL;
+  const salarioBase = Number(f.salarioBase||0);
+  const faltas = state.assiduidade.filter(a=>a.funcionarioId===f.id && a.estado==='falta' && a.data.slice(0,7)===`${ano}-${String(mes+1).padStart(2,'0')}`).length;
+  const valorDia = salarioBase/26;
+  const descontoFaltas = faltas*valorDia;
+  const adiantamentosMes = state.adiantamentos.filter(a=>a.funcionarioId===f.id && Number(a.mesDesconto)===mes && Number(a.anoDesconto)===ano && a.estado!=='descontado');
+  const totalAdiantamentos = adiantamentosMes.reduce((s,a)=>s+Number(a.valor||0),0);
+  const salarioIliquido = salarioBase; // subsídios podem ser adicionados manualmente na edição
+  const inss = salarioIliquido*(legal.inssEmpregado||0.03);
+  const irps = calcIRPS(salarioIliquido);
+  const totalDescontos = inss+irps+descontoFaltas+totalAdiantamentos;
+  const liquido = salarioIliquido - totalDescontos;
+  return {salarioBase,faltas,descontoFaltas,adiantamentosMes,totalAdiantamentos,inss,irps,liquido,inssPatronal:salarioIliquido*(legal.inssEntidade||0.04)};
+}
+function renderFolha(){
+  const canProcess = canEditModule('diretor','rh');
+  const now = new Date();
+  const mes = state.viewParams.mes!==undefined? Number(state.viewParams.mes) : now.getMonth();
+  const ano = state.viewParams.ano!==undefined? Number(state.viewParams.ano) : now.getFullYear();
+  const jaProcessada = state.folhas.filter(x=>Number(x.mes)===mes && Number(x.ano)===ano);
+  const ativos = state.funcionarios.filter(f=>f.estado!=='inativo');
+  let totalLiquido=0, totalDescontos=0, totalINSSPatronal=0;
+  const rows = ativos.map(f=>{
+    const salva = jaProcessada.find(x=>x.funcionarioId===f.id);
+    const calc = salva || calcFolhaFuncionario(f,mes,ano);
+    totalLiquido += Number(calc.liquido||0);
+    totalDescontos += Number(calc.inss||0)+Number(calc.irps||0)+Number(calc.descontoFaltas||0)+Number(calc.totalAdiantamentos||0);
+    totalINSSPatronal += Number(calc.inssPatronal||0);
+    return `<tr>
+      <td><b>${esc(f.nome)}</b><div class="faint">${esc(f.funcao)}</div></td>
+      <td>${fmtMZN(calc.salarioBase)}</td>
+      <td>${fmtMZN(calc.inss)}</td>
+      <td>${fmtMZN(calc.irps)}</td>
+      <td>${fmtMZN(calc.descontoFaltas)}${calc.faltas?` <span class="faint">(${calc.faltas}d)</span>`:''}</td>
+      <td>${fmtMZN(calc.totalAdiantamentos)}</td>
+      <td><b>${fmtMZN(calc.liquido)}</b></td>
+      <td class="row-actions">
+        <button class="btn btn-outline btn-sm" onclick="printReciboVencimento('${f.id}',${mes},${ano})">🖨️ Recibo</button>
+      </td></tr>`;
+  }).join('');
+  return `
+  <div class="grid-cols cols-3" style="margin-bottom:16px;">
+    <div class="kpi"><div class="lbl">Total Líquido a Pagar</div><div class="val">${fmtMZN(totalLiquido)}</div></div>
+    <div class="kpi"><div class="lbl">Total Descontos</div><div class="val">${fmtMZN(totalDescontos)}</div></div>
+    <div class="kpi"><div class="lbl">INSS Patronal (4%)</div><div class="val">${fmtMZN(totalINSSPatronal)}</div></div>
+  </div>
+  <div class="card">
+    <div class="card-head">
+      <h3>Folha de Salário — ${MESES[mes]} de ${ano} ${jaProcessada.length?'<span class="badge badge-ok" style="margin-left:8px;">Processada</span>':'<span class="badge badge-warn" style="margin-left:8px;">Simulação (não gravada)</span>'}</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select onchange="navigate('folha',{mes:this.value,ano:${ano}})" style="width:auto;">${MESES.map((m,i)=>`<option value="${i}" ${i===mes?'selected':''}>${m}</option>`).join('')}</select>
+        <select onchange="navigate('folha',{mes:${mes},ano:this.value})" style="width:auto;">${[ano-1,ano,ano+1].map(y=>`<option value="${y}" ${y===ano?'selected':''}>${y}</option>`).join('')}</select>
+        ${canProcess && !jaProcessada.length ? `<button class="btn btn-primary btn-sm" onclick="processarFolha(${mes},${ano})">Processar e Gravar Folha</button>`:''}
+        ${canProcess && jaProcessada.length ? `<button class="btn btn-outline btn-sm" onclick="printFolhaConsolidada(${mes},${ano})">🖨️ Folha Consolidada</button>`:''}
+      </div>
+    </div>
+    <p class="faint" style="margin-bottom:10px;">INSS: ${((state.legal?.inssEmpregado||0.03)*100).toFixed(0)}% trabalhador / ${((state.legal?.inssEntidade||0.04)*100).toFixed(0)}% entidade patronal · IRPS calculado por escalões progressivos. Ajustável em Configurações.</p>
+    ${tableShell(["Funcionário","Salário Base","INSS (3%)","IRPS","Faltas","Adiantamentos","Líquido a Pagar","Acções"], rows, {emptyMsg:"Nenhum funcionário activo."})}
+  </div>`;
+}
+async function processarFolha(mes,ano){
+  confirmAction(`Processar e gravar a folha de salário de ${MESES[mes]}/${ano}? Os adiantamentos deste mês serão marcados como descontados.`, async ()=>{
+    const ativos = state.funcionarios.filter(f=>f.estado!=='inativo');
+    const batch = db.batch();
+    ativos.forEach(f=>{
+      const calc = calcFolhaFuncionario(f,mes,ano);
+      const ref = db.collection('folhas').doc();
+      batch.set(ref,{funcionarioId:f.id, mes, ano, ...calc, processadoEm:new Date().toISOString()});
+    });
+    state.adiantamentos.filter(a=>Number(a.mesDesconto)===mes && Number(a.anoDesconto)===ano && a.estado!=='descontado')
+      .forEach(a=>batch.update(db.collection('adiantamentos').doc(a.id),{estado:'descontado'}));
+    await batch.commit();
+    toast("Folha processada e gravada.","ok");
+  });
+}
+function printReciboVencimento(funcionarioId,mes,ano){
+  const f = state.funcionarios.find(x=>x.id===funcionarioId);
+  const salva = state.folhas.find(x=>x.funcionarioId===funcionarioId && Number(x.mes)===mes && Number(x.ano)===ano);
+  const calc = salva || calcFolhaFuncionario(f,mes,ano);
+  const html = `<div class="print-doc" id="print-area">
+    <div class="doc-head"><h1>${esc(state.school?.nome||'Colégio Mentes Brilhantes')}</h1>
+    <div class="sub">${esc(state.school?.endereco||'')} ${state.school?.nuit?(' · NUIT: '+esc(state.school.nuit)):''}</div>
+    <h2 style="margin-top:14px;font-size:15px;">RECIBO DE VENCIMENTO — ${MESES[mes]} / ${ano}</h2></div>
+    <table class="slip-table">
+      <tr><th>Funcionário</th><td>${esc(f.nome)}</td></tr>
+      <tr><th>Função</th><td>${esc(f.funcao)}</td></tr>
+      <tr><th>Nº INSS</th><td>${esc(f.numeroINSS||'—')}</td></tr>
+    </table>
+    <table class="slip-table">
+      <tr><th>Vencimentos</th><th>Valor</th></tr>
+      <tr><td>Salário Base</td><td>${fmtMZN(calc.salarioBase)}</td></tr>
+      <tr><th>Descontos</th><th>Valor</th></tr>
+      <tr><td>INSS (${((state.legal?.inssEmpregado||0.03)*100).toFixed(0)}%)</td><td>${fmtMZN(calc.inss)}</td></tr>
+      <tr><td>IRPS</td><td>${fmtMZN(calc.irps)}</td></tr>
+      <tr><td>Faltas (${calc.faltas||0} dia(s))</td><td>${fmtMZN(calc.descontoFaltas)}</td></tr>
+      <tr><td>Adiantamentos</td><td>${fmtMZN(calc.totalAdiantamentos)}</td></tr>
+      <tr><th>LÍQUIDO A RECEBER</th><th>${fmtMZN(calc.liquido)}</th></tr>
+    </table>
+    <div class="sign-row"><div class="sign-block">O Colégio</div><div class="sign-block">${esc(f.nome)}</div></div>
+  </div>`;
+  printHtml(html);
+}
+function printFolhaConsolidada(mes,ano){
+  const registos = state.folhas.filter(x=>Number(x.mes)===mes && Number(x.ano)===ano);
+  const total = registos.reduce((s,r)=>s+Number(r.liquido||0),0);
+  const rows = registos.map(r=>{
+    const f=state.funcionarios.find(x=>x.id===r.funcionarioId);
+    return `<tr><td>${esc(f?f.nome:'')}</td><td>${fmtMZN(r.salarioBase)}</td><td>${fmtMZN(r.inss)}</td><td>${fmtMZN(r.irps)}</td><td>${fmtMZN(r.liquido)}</td></tr>`;
+  }).join('');
+  const html = `<div class="print-doc" id="print-area" style="max-width:900px;">
+    <div class="doc-head"><h1>${esc(state.school?.nome||'')}</h1><h2 style="margin-top:14px;font-size:15px;">FOLHA DE SALÁRIO CONSOLIDADA — ${MESES[mes]} / ${ano}</h2></div>
+    <table class="slip-table"><tr><th>Funcionário</th><th>Salário Base</th><th>INSS</th><th>IRPS</th><th>Líquido</th></tr>${rows}
+    <tr><th colspan="4">TOTAL</th><th>${fmtMZN(total)}</th></tr></table>
+  </div>`;
+  printHtml(html);
+}
+
+/* =================================================================
+   18. MÓDULO PEDAGÓGICO (Coordenação + Director)
+================================================================== */
+function renderPedagogico(){
+  const tab = state.viewParams.tab || 'turmas';
+  const tabs = [['turmas','Turmas & Alocação'],['horarios','Horários'],['planos','Planos de Avaliação'],['pautas','Pautas']];
+  return `
+  <div class="tabs">${tabs.map(([id,lbl])=>`<div class="tab ${tab===id?'active':''}" onclick="navigate('pedagogico',{tab:'${id}'})">${lbl}${id==='planos'&&state.planos.some(p=>p.estado==='submetido')?' 🔴':''}${id==='pautas'&&state.pautas.some(p=>p.estado==='submetida')?' 🔴':''}</div>`).join('')}</div>
+  ${tab==='turmas'?renderTurmasTab():tab==='horarios'?renderHorariosTab():tab==='planos'?renderPlanosTab():renderPautasTab()}`;
+}
+function renderTurmasTab(){
+  const canEdit = canEditModule('diretor','pedagogico');
+  const rows = state.turmas.slice().sort((a,b)=>NIVEIS_TURMA.indexOf(a.nivel)-NIVEIS_TURMA.indexOf(b.nivel)).map(t=>{
+    const prof = state.funcionarios.find(f=>f.id===t.professorId);
+    const nAlunos = state.alunos.filter(a=>a.turmaId===t.id).length;
+    return `<tr><td><b>${esc(t.nivel)} — ${esc(t.nome)}</b></td><td>${esc(t.sala||'—')}</td><td>${nAlunos}</td>
+      <td>${prof?esc(prof.nome):'<span class="badge badge-danger">Não alocado</span>'}</td>
+      <td class="row-actions">${canEdit?`<button class="btn btn-outline btn-sm" onclick="editTurma('${t.id}')">Editar</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteDoc('turmas','${t.id}','${esc(t.nome)}')">Remover</button>`:''}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-head"><h3>Turmas (${state.turmas.length})</h3>
+    ${canEdit?`<button class="btn btn-primary btn-sm" onclick="editTurma()">+ Nova Turma</button>`:''}</div>
+    ${tableShell(["Turma","Sala","Nº Alunos","Docente Alocado","Acções"], rows, {emptyMsg:"Nenhuma turma criada — comece pelo Berçário até à 7ª Classe conforme a estrutura do Colégio."})}</div>`;
+}
+function editTurma(id){
+  const t = id? state.turmas.find(x=>x.id===id) : {};
+  const professores = state.funcionarios.filter(f=>f.funcao==='Professor(a)'||f.funcao==='Educador(a) de Infância');
+  openFormModal({
+    title:id?"Editar Turma":"Nova Turma",
+    fields:[
+      {key:'nivel',label:'Nível/Classe',type:'select',required:true,options:NIVEIS_TURMA,half:true},
+      {key:'nome',label:'Nome/Secção (ex: "A", "Turma 1")',required:true,half:true},
+      {key:'sala',label:'Sala',half:true},
+      {key:'anoLectivo',label:'Ano Lectivo',half:true},
+      {key:'professorId',label:'Docente Titular / Alocado',type:'select',options:[["",'— Não alocado —'],...professores.map(p=>[p.id,p.nome])]}
+    ],
+    initial: t.id? t : {anoLectivo:state.school?.anoLectivo||new Date().getFullYear()},
+    onSubmit: async(data)=>{
+      if(id) await db.collection('turmas').doc(id).update(data);
+      else await db.collection('turmas').add(data);
+      toast("Turma guardada.","ok");
+    }
+  });
+}
+function renderHorariosTab(){
+  const canEdit = canEditModule('diretor','pedagogico');
+  const turmaId = state.viewParams.turmaId || (state.turmas[0]?.id||'');
+  const dias = ['Segunda','Terça','Quarta','Quinta','Sexta'];
+  const periodos = ['1ª Hora','2ª Hora','3ª Hora','Intervalo','4ª Hora','5ª Hora'];
+  if(!state.turmas.length) return `<div class="empty-state">Crie primeiro uma turma no separador "Turmas & Alocação".</div>`;
+  const horario = state.horarios.find(h=>h.turmaId===turmaId) || {celulas:{}};
+  const rows = periodos.map(p=>`<tr><td><b>${p}</b></td>${dias.map(d=>{
+    const key=d+'|'+p; const val = horario.celulas?.[key]||'';
+    return `<td>${canEdit?`<input data-key="${key}" value="${esc(val)}" style="min-width:120px;" placeholder="Disciplina / Prof.">`:esc(val)||'—'}</td>`;
+  }).join('')}</tr>`).join('');
+  return `<div class="card">
+    <div class="card-head"><h3>Horário</h3>
+      <select onchange="navigate('pedagogico',{tab:'horarios',turmaId:this.value})" style="width:auto;">
+        ${state.turmas.map(t=>`<option value="${t.id}" ${turmaId===t.id?'selected':''}>${esc(turmaLabel(t))}</option>`).join('')}
+      </select>
+    </div>
+    <div class="table-wrap"><table><thead><tr><th></th>${dias.map(d=>`<th>${d}</th>`).join('')}</tr></thead><tbody id="horario-body">${rows}</tbody></table></div>
+    ${canEdit?`<button class="btn btn-primary btn-sm" style="margin-top:12px;" onclick="guardarHorario('${turmaId}','${horario.id||''}')">Guardar Horário</button>`:''}
+  </div>`;
+}
+async function guardarHorario(turmaId,horarioId){
+  const inputs = document.querySelectorAll('#horario-body input');
+  const celulas = {};
+  inputs.forEach(i=>{ if(i.value.trim()) celulas[i.dataset.key]=i.value.trim(); });
+  if(horarioId) await db.collection('horarios').doc(horarioId).update({celulas});
+  else await db.collection('horarios').add({turmaId, celulas});
+  toast("Horário guardado.","ok");
+}
+function renderPlanosTab(){
+  const canApprove = canEditModule('diretor','pedagogico');
+  const lista = state.planos.slice().sort((a,b)=>(b.submetidoEm||'').localeCompare(a.submetidoEm||''));
+  const badgeMap = {rascunho:['badge-gray','Rascunho'],submetido:['badge-warn','Submetido'],aprovado:['badge-ok','Aprovado'],rejeitado:['badge-danger','Rejeitado']};
+  const rows = lista.map(p=>{
+    const t = state.turmas.find(x=>x.id===p.turmaId);
+    const prof = state.funcionarios.find(f=>f.id===p.professorId);
+    const b = badgeMap[p.estado]||badgeMap.rascunho;
+    return `<tr><td><b>${esc(turmaLabel(t))}</b></td><td>${esc(prof?prof.nome:'—')}</td><td>${esc(p.trimestre||'—')}</td>
+      <td><span class="badge ${b[0]}">${b[1]}</span></td>
+      <td class="row-actions"><button class="btn btn-outline btn-sm" onclick="verPlano('${p.id}')">Ver</button>
+      ${canApprove && p.estado==='submetido' ? `<button class="btn btn-ok btn-sm" onclick="decidirPlano('${p.id}','aprovado')">Aprovar</button>
+      <button class="btn btn-danger btn-sm" onclick="decidirPlano('${p.id}','rejeitado')">Rejeitar</button>`:''}</td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-head"><h3>Planos de Avaliação (${lista.length})</h3></div>
+    ${tableShell(["Turma","Professor","Trimestre","Estado","Acções"], rows, {emptyMsg:"Nenhum plano submetido pelos professores ainda."})}</div>`;
+}
+function verPlano(id){
+  const p = state.planos.find(x=>x.id===id);
+  openModal(`<div class="modal-head"><h3>Plano de Avaliação</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body"><div style="white-space:pre-wrap;">${esc(p.conteudo)}</div>${p.comentario?`<div class="card" style="margin-top:12px;background:var(--brand-light);border:none;"><b>Comentário da Coordenação:</b><p>${esc(p.comentario)}</p></div>`:''}</div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div>`);
+}
+function decidirPlano(id,estado){
+  openFormModal({
+    title: estado==='aprovado'?"Aprovar Plano":"Rejeitar Plano",
+    fields:[{key:'comentario',label:'Comentário (opcional)',type:'textarea'}],
+    submitLabel: estado==='aprovado'?"Aprovar":"Rejeitar",
+    onSubmit: async(data)=>{ await db.collection('planosAvaliacao').doc(id).update({estado,comentario:data.comentario||''}); toast("Decisão registada.","ok"); }
+  });
+}
+function renderPautasTab(){
+  const canConfirm = canEditModule('diretor','pedagogico');
+  const lista = state.pautas.slice().sort((a,b)=>(b.submetidoEm||'').localeCompare(a.submetidoEm||''));
+  const badgeMap = {rascunho:['badge-gray','Rascunho'],submetida:['badge-warn','Submetida'],confirmada:['badge-ok','Confirmada']};
+  const rows = lista.map(p=>{
+    const t = state.turmas.find(x=>x.id===p.turmaId);
+    const b = badgeMap[p.estado]||badgeMap.rascunho;
+    return `<tr><td><b>${esc(turmaLabel(t))}</b></td><td>${esc(p.trimestre||'—')}</td>
+      <td><span class="badge ${b[0]}">${b[1]}</span></td>
+      <td class="row-actions"><button class="btn btn-outline btn-sm" onclick="verPauta('${p.id}')">Ver</button>
+      ${canConfirm && p.estado==='submetida'? `<button class="btn btn-ok btn-sm" onclick="confirmarPauta('${p.id}')">Confirmar</button>`:''}
+      ${p.estado==='confirmada'?`<button class="btn btn-outline btn-sm" onclick="printPauta('${p.id}')">🖨️ Imprimir</button>`:''}
+      </td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-head"><h3>Pautas (${lista.length})</h3></div>
+    ${tableShell(["Turma","Trimestre","Estado","Acções"], rows, {emptyMsg:"Nenhuma pauta submetida ainda."})}</div>`;
+}
+function verPauta(id){
+  const p = state.pautas.find(x=>x.id===id);
+  const t = state.turmas.find(x=>x.id===p.turmaId);
+  const alunosTurma = state.alunos.filter(a=>a.turmaId===p.turmaId);
+  const rows = alunosTurma.map(a=>`<tr><td>${esc(a.nome)}</td><td>${esc(p.notas?.[a.id]??'—')}</td></tr>`).join('');
+  openModal(`<div class="modal-head"><h3>Pauta — ${esc(turmaLabel(t))} (${esc(p.trimestre)})</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">${tableShell(["Aluno","Nota"],rows)}</div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Fechar</button></div>`,{wide:true});
+}
+function confirmarPauta(id){
+  confirmAction("Confirmar esta pauta? Após confirmada, considera-se oficial.", async ()=>{
+    await db.collection('pautas').doc(id).update({estado:'confirmada'});
+    toast("Pauta confirmada.","ok");
+  });
+}
+function printPauta(id){
+  const p = state.pautas.find(x=>x.id===id);
+  const t = state.turmas.find(x=>x.id===p.turmaId);
+  const alunosTurma = state.alunos.filter(a=>a.turmaId===p.turmaId);
+  const rows = alunosTurma.map((a,i)=>`<tr><td>${i+1}</td><td>${esc(a.nome)}</td><td>${esc(p.notas?.[a.id]??'—')}</td></tr>`).join('');
+  const html = `<div class="print-doc" id="print-area">
+    <div class="doc-head"><h1>${esc(state.school?.nome||'')}</h1><h2 style="margin-top:14px;font-size:15px;">PAUTA DE AVALIAÇÃO — ${esc(turmaLabel(t))} — ${esc(p.trimestre)}</h2></div>
+    <table class="slip-table"><tr><th>Nº</th><th>Aluno</th><th>Nota</th></tr>${rows}</table>
+    <div class="sign-row"><div class="sign-block">Professor(a)</div><div class="sign-block">Coordenação Pedagógica</div></div>
+  </div>`;
+  printHtml(html);
+}
+
+/* =================================================================
+   19. ÁREA DO PROFESSOR
+================================================================== */
+function minhasTurmas(){ return state.turmas.filter(t=>t.professorId===state.funcionarioId); }
+function renderProfessorArea(){
+  const tab = state.viewParams.tab || 'turmas';
+  const turmas = minhasTurmas();
+  const tabs = [['turmas','Minhas Turmas & Alunos'],['planos','Plano de Avaliação'],['notas','Notas & Pauta']];
+  if(!state.funcionarioId){
+    return `<div class="empty-state"><div class="ic">⚠️</div><p>A sua conta de professor(a) não está associada a um registo de Funcionário. Peça ao RH/Director para ligar a sua conta.</p></div>`;
+  }
+  return `<div class="tabs">${tabs.map(([id,lbl])=>`<div class="tab ${tab===id?'active':''}" onclick="navigate('professor',{tab:'${id}'})">${lbl}</div>`).join('')}</div>
+  ${tab==='turmas'?renderProfTurmas(turmas):tab==='planos'?renderProfPlanos(turmas):renderProfNotas(turmas)}`;
+}
+function renderProfTurmas(turmas){
+  if(!turmas.length) return `<div class="empty-state"><div class="ic">🏫</div><p>Ainda não lhe foi alocada nenhuma turma. Contacte a Coordenação Pedagógica.</p></div>`;
+  return turmas.map(t=>{
+    const alunosTurma = state.alunos.filter(a=>a.turmaId===t.id);
+    const rows = alunosTurma.map(a=>`<tr><td>${esc(a.nome)}</td><td>${fmtDate(a.dataNascimento)}</td><td>${esc(a.encarregadoNome||'—')}</td></tr>`).join('');
+    return `<div class="card" style="margin-bottom:16px;"><div class="card-head"><h3>${esc(turmaLabel(t))} — ${alunosTurma.length} aluno(s)</h3></div>
+      ${tableShell(["Aluno","Data Nascimento","Encarregado"], rows, {emptyMsg:"Sem alunos matriculados nesta turma."})}</div>`;
+  }).join('');
+}
+function renderProfPlanos(turmas){
+  const meusPlanos = state.planos.filter(p=>p.professorId===state.funcionarioId);
+  const badgeMap = {rascunho:['badge-gray','Rascunho'],submetido:['badge-warn','Submetido — aguarda aprovação'],aprovado:['badge-ok','Aprovado'],rejeitado:['badge-danger','Rejeitado']};
+  const rows = meusPlanos.map(p=>{
+    const t=state.turmas.find(x=>x.id===p.turmaId);
+    const b=badgeMap[p.estado]||badgeMap.rascunho;
+    return `<tr><td>${esc(turmaLabel(t))}</td><td>${esc(p.trimestre)}</td><td><span class="badge ${b[0]}">${b[1]}</span></td>
+      <td class="row-actions"><button class="btn btn-outline btn-sm" onclick="verPlano('${p.id}')">Ver</button>
+      ${p.estado!=='aprovado'?`<button class="btn btn-outline btn-sm" onclick="editPlano('${p.id}')">Editar</button>`:''}
+      </td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-head"><h3>Os Meus Planos de Avaliação</h3>
+    <button class="btn btn-primary btn-sm" onclick="editPlano()">+ Novo Plano</button></div>
+    ${tableShell(["Turma","Trimestre","Estado","Acções"], rows, {emptyMsg:"Ainda não criou nenhum plano de avaliação."})}</div>`;
+}
+function editPlano(id){
+  const p = id? state.planos.find(x=>x.id===id) : {};
+  const turmas = minhasTurmas();
+  openFormModal({
+    title: id?"Editar Plano de Avaliação":"Novo Plano de Avaliação",
+    wide:true,
+    fields:[
+      {key:'turmaId',label:'Turma',type:'select',required:true,options:[["",'— Seleccionar —'],...turmas.map(t=>[t.id,turmaLabel(t)])]},
+      {key:'trimestre',label:'Trimestre',type:'select',required:true,options:['1º Trimestre','2º Trimestre','3º Trimestre']},
+      {key:'conteudo',label:'Conteúdo do Plano (instrumentos de avaliação, datas, ponderação, etc.)',type:'textarea',required:true,rows:10}
+    ],
+    initial:p,
+    onSubmit: async(data)=>{
+      const payload = {...data, professorId:state.funcionarioId};
+      if(id) await db.collection('planosAvaliacao').doc(id).update(payload);
+      else await db.collection('planosAvaliacao').add({...payload, estado:'rascunho', criadoEm:new Date().toISOString()});
+      toast("Plano guardado como rascunho.","ok");
+    }
+  });
+  // botão extra de submissão, adicionado após render do modal
+  setTimeout(()=>{
+    const foot = document.querySelector('#active-modal .modal-foot');
+    if(foot && !foot.querySelector('.btn-submeter-plano')){
+      const b=document.createElement('button');
+      b.className='btn btn-accent btn-submeter-plano';
+      b.textContent='Guardar e Submeter para Aprovação';
+      b.onclick=async()=>{
+        const turmaId=document.getElementById('fld_turmaId').value, trimestre=document.getElementById('fld_trimestre').value, conteudo=document.getElementById('fld_conteudo').value;
+        if(!turmaId||!conteudo){ toast("Preencha turma e conteúdo.","err"); return; }
+        const payload={turmaId,trimestre,conteudo,professorId:state.funcionarioId,estado:'submetido',submetidoEm:new Date().toISOString()};
+        if(id) await db.collection('planosAvaliacao').doc(id).update(payload);
+        else await db.collection('planosAvaliacao').add(payload);
+        toast("Plano submetido para aprovação da Coordenação Pedagógica.","ok");
+        closeModal();
+      };
+      foot.insertBefore(b, foot.firstChild);
+    }
+  },50);
+}
+function renderProfNotas(turmas){
+  const turmaId = state.viewParams.turmaId || (turmas[0]?.id||'');
+  const trimestre = state.viewParams.trimestre || '1º Trimestre';
+  if(!turmas.length) return `<div class="empty-state">Sem turmas alocadas.</div>`;
+  const alunosTurma = state.alunos.filter(a=>a.turmaId===turmaId);
+  const pauta = state.pautas.find(p=>p.turmaId===turmaId && p.trimestre===trimestre && p.professorId===state.funcionarioId);
+  const rows = alunosTurma.map(a=>`<tr><td>${esc(a.nome)}</td><td><input type="number" min="0" max="20" step="0.5" data-aluno="${a.id}" value="${pauta?.notas?.[a.id]??''}" ${pauta?.estado==='confirmada'?'disabled':''} style="max-width:90px;"></td></tr>`).join('');
+  return `<div class="card">
+    <div class="card-head"><h3>Lançamento de Notas</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <select onchange="navigate('professor',{tab:'notas',turmaId:this.value,trimestre:'${trimestre}'})" style="width:auto;">
+          ${turmas.map(t=>`<option value="${t.id}" ${turmaId===t.id?'selected':''}>${esc(turmaLabel(t))}</option>`).join('')}
+        </select>
+        <select onchange="navigate('professor',{tab:'notas',turmaId:'${turmaId}',trimestre:this.value})" style="width:auto;">
+          ${['1º Trimestre','2º Trimestre','3º Trimestre'].map(tr=>`<option ${trimestre===tr?'selected':''}>${tr}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    ${pauta?`<p><span class="badge ${pauta.estado==='confirmada'?'badge-ok':'badge-warn'}">${pauta.estado==='confirmada'?'Pauta Confirmada':'Pauta '+(pauta.estado==='submetida'?'Submetida':'em Rascunho')}</span></p>`:''}
+    <div id="notas-body">${tableShell(["Aluno","Nota (0-20)"],rows,{emptyMsg:"Sem alunos nesta turma."})}</div>
+    ${pauta?.estado!=='confirmada'?`<div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-outline btn-sm" onclick="guardarNotas('${turmaId}','${trimestre}','${pauta?.id||''}',false)">Guardar Rascunho</button>
+      <button class="btn btn-accent btn-sm" onclick="guardarNotas('${turmaId}','${trimestre}','${pauta?.id||''}',true)">Submeter Pauta à Coordenação</button>
+    </div>`:''}
+  </div>`;
+}
+async function guardarNotas(turmaId,trimestre,pautaId,submeter){
+  const notas={};
+  document.querySelectorAll('#notas-body input').forEach(i=>{ if(i.value!=='') notas[i.dataset.aluno]=Number(i.value); });
+  const payload = {turmaId,trimestre,professorId:state.funcionarioId,notas,estado:submeter?'submetida':'rascunho'};
+  if(submeter) payload.submetidoEm=new Date().toISOString();
+  if(pautaId) await db.collection('pautas').doc(pautaId).update(payload);
+  else await db.collection('pautas').add(payload);
+  toast(submeter?"Pauta submetida à Coordenação Pedagógica.":"Rascunho guardado.","ok");
+}
+
+/* =================================================================
+   20. FINANCEIRO (Necessidades + Despesas) — Director & Financeiro
+================================================================== */
+function renderFinanceiro(){
+  const tab = state.viewParams.tab || 'necessidades';
+  const tabs = [['necessidades','Lista de Necessidades'],['despesas','Despesas']];
+  return `<div class="tabs">${tabs.map(([id,lbl])=>`<div class="tab ${tab===id?'active':''}" onclick="navigate('financeiro',{tab:'${id}'})">${lbl}</div>`).join('')}</div>
+  ${tab==='necessidades'?renderNecessidades():renderDespesas()}`;
+}
+function renderNecessidades(){
+  const lista = state.necessidades.slice().sort((a,b)=>(b.criadoEm||'').localeCompare(a.criadoEm||''));
+  const badgeMap = {pendente:['badge-warn','Pendente'],aprovada:['badge-info','Aprovada'],pago:['badge-ok','Atendida/Paga'],rejeitada:['badge-danger','Rejeitada']};
+  const rows = lista.map(n=>{
+    const b = badgeMap[n.estado]||badgeMap.pendente;
+    return `<tr><td><b>${esc(n.descricao)}</b><div class="faint">${esc(n.departamento||'')}</div></td>
+      <td>${fmtMZN(n.valorEstimado)}</td><td><span class="badge ${n.prioridade==='Alta'?'badge-danger':n.prioridade==='Média'?'badge-warn':'badge-gray'}">${esc(n.prioridade||'Normal')}</span></td>
+      <td><span class="badge ${b[0]}">${b[1]}</span></td>
+      <td class="row-actions">
+        ${n.estado!=='pago'?`<button class="btn btn-ok btn-sm" onclick="atenderNecessidade('${n.id}')">Converter em Despesa / Pagar</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="deleteDoc('necessidades','${n.id}','necessidade')">Remover</button>
+      </td></tr>`;
+  }).join('');
+  return `<div class="card"><div class="card-head"><h3>Lista de Necessidades (${lista.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="editNecessidade()">+ Nova Necessidade</button></div>
+    ${tableShell(["Descrição","Valor Estimado","Prioridade","Estado","Acções"], rows, {emptyMsg:"Nenhuma necessidade registada."})}</div>`;
+}
+function editNecessidade(){
+  openFormModal({
+    title:"Nova Necessidade",
+    fields:[
+      {key:'descricao',label:'Descrição da necessidade',required:true},
+      {key:'departamento',label:'Departamento/Sector',half:true},
+      {key:'valorEstimado',label:'Valor Estimado (MT)',type:'number',half:true},
+      {key:'prioridade',label:'Prioridade',type:'select',options:['Baixa','Média','Alta']}
+    ],
+    onSubmit: async(data)=>{
+      await db.collection('necessidades').add({...data,estado:'pendente',criadoEm:new Date().toISOString()});
+      toast("Necessidade registada.","ok");
+    }
+  });
+}
+function atenderNecessidade(id){
+  const n = state.necessidades.find(x=>x.id===id);
+  openFormModal({
+    title:"Pagar Necessidade / Registar Despesa",
+    fields:[
+      {key:'valor',label:'Valor Efectivo (MT)',type:'number',required:true},
+      {key:'formaPagamento',label:'Forma de Pagamento',type:'select',required:true,options:FORMAS_PAGAMENTO},
+      {key:'data',label:'Data',type:'date',required:true}
+    ],
+    initial:{valor:n.valorEstimado,data:todayISO()},
+    submitLabel:"Confirmar Pagamento",
+    onSubmit: async(data)=>{
+      await db.collection('despesas').add({descricao:n.descricao,categoria:n.departamento||'Necessidade',valor:data.valor,formaPagamento:data.formaPagamento,data:data.data,estado:'pago',criadoEm:new Date().toISOString()});
+      await db.collection('necessidades').doc(id).update({estado:'pago'});
+      toast("Necessidade paga e despesa registada.","ok");
+    }
+  });
+}
+function renderDespesas(){
+  const lista = state.despesas.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  const total = lista.filter(d=>d.estado==='pago').reduce((s,d)=>s+Number(d.valor||0),0);
+  const rows = lista.map(d=>`<tr><td><b>${esc(d.descricao)}</b></td><td>${esc(d.categoria||'—')}</td><td>${fmtDate(d.data)}</td><td>${fmtMZN(d.valor)}</td>
+    <td><span class="badge ${d.estado==='pago'?'badge-ok':'badge-warn'}">${d.estado==='pago'?'Paga':'Pendente'}</span></td>
+    <td class="row-actions"><button class="btn btn-danger btn-sm" onclick="deleteDoc('despesas','${d.id}','despesa')">Remover</button></td></tr>`).join('');
+  return `<div class="kpi" style="margin-bottom:16px;max-width:280px;"><div class="lbl">Total de Despesas Pagas</div><div class="val">${fmtMZN(total)}</div></div>
+  <div class="card"><div class="card-head"><h3>Despesas (${lista.length})</h3>
+    <button class="btn btn-primary btn-sm" onclick="editDespesa()">+ Nova Despesa</button></div>
+    ${tableShell(["Descrição","Categoria","Data","Valor","Estado","Acções"], rows, {emptyMsg:"Nenhuma despesa registada."})}</div>`;
+}
+function editDespesa(){
+  openFormModal({
+    title:"Nova Despesa",
+    fields:[
+      {key:'descricao',label:'Descrição',required:true},
+      {key:'categoria',label:'Categoria',half:true},
+      {key:'valor',label:'Valor (MT)',type:'number',required:true,half:true},
+      {key:'formaPagamento',label:'Forma de Pagamento',type:'select',options:FORMAS_PAGAMENTO,half:true},
+      {key:'data',label:'Data',type:'date',required:true,half:true},
+      {key:'estado',label:'Estado',type:'select',options:[['pago','Paga'],['pendente','Pendente']]}
+    ],
+    initial:{data:todayISO()},
+    onSubmit: async(data)=>{ await db.collection('despesas').add({...data,criadoEm:new Date().toISOString()}); toast("Despesa registada.","ok"); }
+  });
+}
+
+/* =================================================================
+   21. CONFIGURAÇÕES  (apenas Director)
+================================================================== */
+function renderConfig(){
+  const tab = state.viewParams.tab || 'escola';
+  const tabs = [['escola','Dados da Escola'],['legal','Parâmetros Legais'],['utilizadores','Utilizadores'],['reset','Zona de Perigo']];
+  return `<div class="tabs">${tabs.map(([id,lbl])=>`<div class="tab ${tab===id?'active':''}" onclick="navigate('config',{tab:'${id}'})">${lbl}</div>`).join('')}</div>
+  ${tab==='escola'?renderConfigEscola():tab==='legal'?renderConfigLegal():tab==='utilizadores'?renderConfigUtilizadores():renderConfigReset()}`;
+}
+function renderConfigEscola(){
+  const s = state.school||{};
+  return `<div class="card" style="max-width:560px;">
+    <div class="field"><label>Nome da Escola</label><input id="cfg-nome" value="${esc(s.nome)}"></div>
+    <div class="field-row">
+      <div class="field"><label>NUIT</label><input id="cfg-nuit" value="${esc(s.nuit)}"></div>
+      <div class="field"><label>Ano Lectivo</label><input id="cfg-ano" value="${esc(s.anoLectivo)}"></div>
+    </div>
+    <div class="field"><label>Endereço</label><input id="cfg-end" value="${esc(s.endereco)}"></div>
+    <div class="field-row">
+      <div class="field"><label>Telefone</label><input id="cfg-tel" value="${esc(s.telefone)}"></div>
+      <div class="field"><label>Email</label><input id="cfg-email" value="${esc(s.email)}"></div>
+    </div>
+    <button class="btn btn-primary" onclick="guardarConfigEscola()">Guardar</button>
+  </div>`;
+}
+async function guardarConfigEscola(){
+  const data = {nome:document.getElementById('cfg-nome').value.trim(),nuit:document.getElementById('cfg-nuit').value.trim(),
+    anoLectivo:document.getElementById('cfg-ano').value.trim(),endereco:document.getElementById('cfg-end').value.trim(),
+    telefone:document.getElementById('cfg-tel').value.trim(),email:document.getElementById('cfg-email').value.trim()};
+  await db.collection('config').doc('school').set(data,{merge:true});
+  state.school = {...state.school,...data};
+  toast("Dados da escola actualizados.","ok");
+}
+function renderConfigLegal(){
+  const l = state.legal||DEFAULT_LEGAL;
+  return `<div class="card" style="max-width:600px;">
+    <p class="faint" style="margin-bottom:14px;">Valores de referência para Moçambique — confirme sempre com a legislação laboral/fiscal em vigor (Lei do Trabalho e tabela do IRPS da Autoridade Tributária) antes de usar em folha oficial.</p>
+    <div class="field-row">
+      <div class="field"><label>INSS — Trabalhador (%)</label><input id="cfg-inss-emp" type="number" step="0.1" value="${(l.inssEmpregado*100).toFixed(1)}"></div>
+      <div class="field"><label>INSS — Entidade Patronal (%)</label><input id="cfg-inss-ent" type="number" step="0.1" value="${(l.inssEntidade*100).toFixed(1)}"></div>
+    </div>
+    <div class="field"><label>Dedução Pessoal Mensal para IRPS (MT)</label><input id="cfg-deducao" type="number" value="${l.deducaoPessoalMensal}"></div>
+    <p class="faint">Tabela de IRPS (mensal) actualmente configurada: ${l.irpsTable.map(e=>`até ${e.ate===Infinity?'∞':fmtMZN(e.ate)} — ${(e.taxa*100).toFixed(0)}%`).join(' · ')}</p>
+    <button class="btn btn-primary" onclick="guardarConfigLegal()">Guardar</button>
+  </div>`;
+}
+async function guardarConfigLegal(){
+  const data = {...state.legal,
+    inssEmpregado:Number(document.getElementById('cfg-inss-emp').value)/100,
+    inssEntidade:Number(document.getElementById('cfg-inss-ent').value)/100,
+    deducaoPessoalMensal:Number(document.getElementById('cfg-deducao').value)};
+  await db.collection('config').doc('legal').set(data,{merge:true});
+  state.legal = data;
+  toast("Parâmetros legais actualizados.","ok");
+}
+function renderConfigUtilizadores(){
+  const rows = state.usersList.map(u=>{
+    const f = state.funcionarios.find(x=>x.id===u.funcionarioId);
+    return `<tr><td><b>${esc(u.nome)}</b><div class="faint">${esc(u.email)}</div></td>
+      <td><span class="badge badge-info">${esc(ROLES[u.role]?.label||u.role)}</span></td>
+      <td>${esc(f?f.nome:'—')}</td>
+      <td class="row-actions">${u.id!==state.user.uid?`<button class="btn btn-outline btn-sm" onclick="editUtilizadorLigacao('${u.id}')">Editar</button>
+        <button class="btn btn-outline btn-sm" onclick="enviarLinkSenha('${u.id}')">Link de senha</button>
+        <button class="btn btn-danger btn-sm" onclick="removerUtilizador('${u.id}')">Remover</button>`:'<span class="faint">Você</span>'}</td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-head"><h3>Utilizadores do Sistema (${state.usersList.length})</h3>
+      <button class="btn btn-primary btn-sm" onclick="criarUtilizador()">+ Novo Utilizador</button></div>
+    ${tableShell(["Nome","Perfil","Funcionário Ligado","Acções"], rows)}
+    <p class="faint" style="margin-top:10px;">Perfis disponíveis: Director(a) (acesso total + Dashboard), Financeiro, RH, Secretaria, Coordenação Pedagógica, Professor(a). O perfil "Professor(a)" deve estar ligado ao respectivo registo em Funcionários para ver as suas turmas.</p>
+  </div>`;
+}
+function renderConfigReset(){
+  if(state.role!=='diretor'){
+    return `<div class="empty-state"><p>Apenas o(a) Director(a) pode aceder a esta secção.</p></div>`;
+  }
+  return `<div class="card" style="max-width:640px;border:1px solid var(--danger,#dc2626);">
+    <h3 style="color:var(--danger,#dc2626);margin-bottom:8px;">⚠️ Reset Total do Sistema</h3>
+    <p class="faint" style="margin-bottom:10px;">Esta acção apaga <b>permanentemente e sem possibilidade de recuperação</b>: todos os alunos, matrículas, mensalidades, funcionários, contratos, assiduidade, adiantamentos, folhas de salário, planos de avaliação, pautas, horários, despesas, necessidades, preços de mensalidades, todos os perfis de utilizador (incluindo o seu, de Director) e as configurações da escola.</p>
+    <p class="faint" style="margin-bottom:10px;">No fim, o sistema fica <b>virgem</b> — a sua sessão é terminada e a conta de Director é eliminada, arrancando novamente o assistente de configuração inicial (passo 1: dados da escola → passo 2: nova conta de Director).</p>
+    <p class="faint" style="margin-bottom:14px;"><b>Nota:</b> por limitação do Firebase no lado do cliente, este botão só consegue eliminar a conta de autenticação do utilizador actualmente ligado (o Director). Contas de outros utilizadores (RH, professores, etc.) perdem o respectivo perfil e ficam sem acesso, mas o registo de autenticação em si só é removido por si na consola do Firebase (Authentication → Users), se desejar limpar tudo por completo.</p>
+    <button class="btn btn-danger" onclick="abrirResetSistema()">Apagar Tudo e Entregar Sistema Virgem</button>
+  </div>`;
+}
+function abrirResetSistema(){
+  openModal(`
+    <div class="modal-head"><h3 style="color:var(--danger,#dc2626);">⚠️ Confirmar Reset Total</h3><button class="modal-close" onclick="closeModal()">✕</button></div>
+    <div class="modal-body">
+      <p style="margin-bottom:10px;">Esta acção é <b>irreversível</b>. Todos os dados serão apagados e a sua conta de Director será eliminada.</p>
+      <div class="field"><label>Escreva <b>APAGAR TUDO</b> para confirmar</label><input id="reset-confirm-text" placeholder="APAGAR TUDO"></div>
+      <div class="field"><label>Confirme a sua senha actual</label><input id="reset-confirm-pass" type="password"></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-danger" id="reset-confirm-btn">Apagar Tudo Definitivamente</button></div>
+  `);
+  document.getElementById('reset-confirm-btn').onclick = async ()=>{
+    const txt = document.getElementById('reset-confirm-text').value.trim();
+    const pass = document.getElementById('reset-confirm-pass').value;
+    if(txt!=='APAGAR TUDO'){ toast('Escreva exactamente "APAGAR TUDO" para confirmar.','err'); return; }
+    if(!pass){ toast('Introduza a sua senha para confirmar.','err'); return; }
+    const btn = document.getElementById('reset-confirm-btn'); btn.disabled=true; btn.textContent='A apagar…';
+    try{
+      await executarResetSistema(pass);
+    }catch(err){
+      toast('Erro ao apagar: '+err.message,'err');
+      btn.disabled=false; btn.textContent='Apagar Tudo Definitivamente';
+    }
+  };
+}
+async function executarResetSistema(pass){
+  const user = auth.currentUser;
+  if(!user) throw new Error('Sessão inválida.');
+  // Reautentica (necessário para poder eliminar a conta)
+  const cred = firebase.auth.EmailAuthProvider.credential(user.email, pass);
+  await user.reauthenticateWithCredential(cred);
+
+  // Apaga todas as colecções de dados + utilizadores, em lotes de 400
+  const colsToWipe = [...COLLECTIONS, 'users'];
+  for(const col of colsToWipe){
+    let snap = await db.collection(col).limit(400).get();
+    while(!snap.empty){
+      const batch = db.batch();
+      snap.docs.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+      snap = await db.collection(col).limit(400).get();
+    }
+  }
+  // Apaga documentos de configuração
+  await Promise.all(['school','legal','descontos'].map(id=>db.collection('config').doc(id).delete().catch(()=>{})));
+
+  detachListeners();
+  toast('Sistema apagado. A preparar configuração inicial…','ok');
+  // Elimina por último a própria conta de autenticação do Director
+  await user.delete();
+  setTimeout(()=>location.reload(), 800);
+}
+function criarUtilizador(){
+  openFormModal({
+    title:"Novo Utilizador",
+    fields:[
+      {key:'nome',label:'Nome completo',required:true},
+      {key:'email',label:'Email',type:'email',required:true,half:true},
+      {key:'pass',label:'Senha inicial',type:'password',required:true,half:true},
+      {key:'role',label:'Perfil',type:'select',required:true,options:Object.entries(ROLES).map(([k,v])=>[k,v.label])},
+      {key:'funcionarioId',label:'Ligar a um Funcionário (opcional, recomendado p/ Professor)',type:'select',options:[["",'— Nenhum —'],...state.funcionarios.map(f=>[f.id,f.nome])]}
+    ],
+    submitLabel:"Criar Utilizador",
+    onSubmit: async(data)=>{
+      // Usa uma app Firebase secundária para não substituir a sessão actual do Director.
+      const secondary = firebase.initializeApp(firebaseConfig, 'secondary_'+Date.now());
+      try{
+        const cred = await secondary.auth().createUserWithEmailAndPassword(data.email,data.pass);
+        await db.collection('users').doc(cred.user.uid).set({nome:data.nome,email:data.email,role:data.role,funcionarioId:data.funcionarioId||null,criadoEm:new Date().toISOString()});
+        toast("Utilizador criado.","ok");
+      } finally { await secondary.delete(); }
+    }
+  });
+}
+function editUtilizadorLigacao(uidToEdit){
+  const u = state.usersList.find(x=>x.id===uidToEdit);
+  openFormModal({
+    title:"Editar Utilizador",
+    fields:[
+      {key:'nome',label:'Nome',required:true},
+      {key:'role',label:'Perfil',type:'select',required:true,options:Object.entries(ROLES).map(([k,v])=>[k,v.label])},
+      {key:'funcionarioId',label:'Ligar a um Funcionário',type:'select',options:[["",'— Nenhum —'],...state.funcionarios.map(f=>[f.id,f.nome])]}
+    ],
+    initial:u,
+    onSubmit: async(data)=>{ await db.collection('users').doc(uidToEdit).update(data); toast("Perfil actualizado.","ok"); }
+  });
+}
+
+function enviarLinkSenha(uidX){
+  const u=state.usersList.find(x=>x.id===uidX); if(!u) return;
+  confirmAction(`Enviar para ${u.email} um link para o utilizador definir uma nova senha?`, async()=>{
+    try{ await auth.sendPasswordResetEmail(u.email); toast('Link enviado para '+u.email,'ok'); }
+    catch(err){ toast('Erro: '+(err.message||''),'err'); }
+  });
+}
+function removerUtilizador(uidX){
+  const u=state.usersList.find(x=>x.id===uidX); if(!u) return;
+  confirmAction(`Remover o acesso de ${u.nome}? Deixará de conseguir usar o sistema. Os dados do funcionário em "Funcionários" não são apagados.`, async()=>{
+    await db.collection('users').doc(uidX).delete();
+    toast('Acesso removido.','ok');
+  });
+}
+
+/* ---------------------------------------------------------------
+   22. ARRANQUE
+---------------------------------------------------------------- */
+bootApp();
+</script>
+</body>
+</html>
