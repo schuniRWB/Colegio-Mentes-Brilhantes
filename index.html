@@ -123,7 +123,16 @@ p{margin:0 0 8px;}
   #menu-toggle{display:block;}
   #sidebar-backdrop.show{display:block;}
   #main-content{padding:14px;}
+  .grid-cols{grid-template-columns:repeat(2,1fr) !important;}
+  /* impede o zoom automático do iOS Safari ao tocar em campos de formulário */
+  input,select,textarea{font-size:16px;}
+  .nav-item{min-height:44px;}
+  .btn{min-height:40px;}
+}
+@media (max-width:560px){
   .grid-cols{grid-template-columns:1fr !important;}
+  .auth-card{padding:26px 18px;}
+  .modal-body,.modal-head,.modal-foot{padding-left:16px;padding-right:16px;}
 }
 
 /* ---------- Cards / grids ---------- */
@@ -349,32 +358,42 @@ async function bootApp(){
   }
   renderRoot(`<div id="login-screen"><div class="auth-card"><div class="brand-block"><div class="logo-circle">🎓</div><h1>A carregar…</h1></div></div></div>`);
 
-  // Verifica se já existe configuração da escola (setup inicial)
-  let schoolDoc;
-  try{ schoolDoc = await db.collection('config').doc('school').get(); }
-  catch(e){ schoolDoc = {exists:false}; }
-
   auth.onAuthStateChanged(async (user)=>{
-    if(!schoolDoc.exists){
-      renderSetupWizard();
+    if(state.wizardActive) return;   // durante a configuração inicial, o assistente controla o ecrã
+    if(!user){
+      state.schoolStatus = await lerEscola();
+      renderLogin();
       return;
     }
-    state.school = schoolDoc.data();
-    if(user){
-      let udoc;
-      try{ udoc = await db.collection('users').doc(user.uid).get(); }catch(e){ udoc=null; }
-      if(udoc && udoc.exists){
-        const ud = udoc.data();
-        state.user = user; state.role = ud.role; state.funcionarioId = ud.funcionarioId||null;
-        state.nomeUtilizador = ud.nome || user.email;
-        attachListeners();
-      }else{
-        renderLogin("A sua conta não está associada a nenhum perfil. Contacte o Director/RH.");
+    let udoc=null;
+    try{ udoc = await db.collection('users').doc(user.uid).get(); }catch(e){ udoc=null; }
+    if(udoc && udoc.exists){
+      const ud = udoc.data();
+      state.user = user; state.role = ud.role; state.funcionarioId = ud.funcionarioId||null;
+      state.nomeUtilizador = ud.nome || user.email;
+      state.view = defaultViewForRole(ud.role); state.viewParams = {};
+      state.schoolStatus = await lerEscola();
+      if(state.schoolStatus==='missing'){
+        if(ud.role==='diretor'){ renderSetupWizard(1); return; }   // configuração ficou a meio
+        renderLogin("O sistema ainda não foi configurado. Peça ao Director para concluir a configuração.");
+        return;
       }
+      if(!state.school) state.school = {};
+      attachListeners();
     }else{
-      renderLogin();
+      state.schoolStatus = await lerEscola();
+      renderLogin("A sua conta não está associada a nenhum perfil. Contacte o Director/RH.");
     }
   });
+}
+
+// Lê os dados da escola. Devolve 'ok' | 'missing' (não configurada) | 'error' (sem acesso/sem rede)
+async function lerEscola(){
+  try{
+    const d = await db.collection('config').doc('school').get();
+    if(d.exists){ state.school = d.data(); return 'ok'; }
+    return 'missing';
+  }catch(e){ return 'error'; }
 }
 
 function renderLogin(errorMsg){
@@ -394,6 +413,10 @@ function renderLogin(errorMsg){
         <p style="text-align:center;margin-top:12px;"><a href="#" onclick="esqueciSenha();return false;">Esqueci a minha senha</a></p>
       </form>
       <p class="faint" style="text-align:center;margin-top:16px;">Acesso apenas para pessoal autorizado do Colégio.</p>
+      ${state.schoolStatus!=='ok'?`<div style="border-top:1px solid var(--border,#e5e7eb);margin-top:16px;padding-top:14px;text-align:center;">
+        <p class="faint" style="margin-bottom:8px;">Primeira instalação deste sistema?</p>
+        <button class="btn btn-outline btn-block" type="button" onclick="renderSetupWizard(1)">Configurar sistema e criar conta de Director</button>
+      </div>`:''}
     </div>
   </div>`);
   document.getElementById('login-form').onsubmit = async (e)=>{
@@ -448,6 +471,8 @@ function abrirAlterarSenha(){
 }
 function logout(){
   detachListeners();
+  state.view = "dashboard"; state.viewParams = {};
+  state.role = null; state.funcionarioId = null; state.nomeUtilizador = "";
   auth.signOut();
 }
 
@@ -456,6 +481,7 @@ function logout(){
 ---------------------------------------------------------------- */
 function renderSetupWizard(step){
   step = step || 1;
+  state.wizardActive = true;
   renderRoot(`
   <div id="setup-screen"><div class="auth-card wide">
     <div class="brand-block"><div class="logo-circle">🎓</div><h1>Configuração Inicial</h1><p>Vamos preparar o sistema do Colégio Mentes Brilhantes</p></div>
@@ -476,7 +502,8 @@ function renderSetupWizard(step){
         <div class="field"><label>Telefone</label><input id="s-tel"></div>
         <div class="field"><label>Email institucional</label><input id="s-email" type="email"></div>
       </div>
-      <button class="btn btn-primary btn-block" id="s-next1">Continuar →</button>`;
+      <button class="btn btn-primary btn-block" id="s-next1">Continuar →</button>
+      ${state.user?'':`<button class="btn btn-outline btn-block" style="margin-top:10px;" onclick="state.wizardActive=false;renderLogin()">Já tenho conta — iniciar sessão</button>`}`;
     document.getElementById('s-next1').onclick = ()=>{
       state._setupSchool = {
         nome: document.getElementById('s-nome').value.trim()||"Colégio Mentes Brilhantes",
@@ -489,6 +516,7 @@ function renderSetupWizard(step){
       renderSetupWizard(2);
     };
   } else if(step===2){
+    if(state.user && state.role==='diretor'){ renderSetupWizard(3); return; }   // Director já existe: saltar criação de conta
     body.innerHTML = `
       <h3 style="margin-bottom:10px;">2. Conta do(a) Director(a)</h3>
       <p class="faint" style="margin-bottom:14px;">Esta será a conta principal com acesso total ao sistema, incluindo o Dashboard.</p>
@@ -513,7 +541,12 @@ function renderSetupWizard(step){
         await db.collection('users').doc(cred.user.uid).set({nome,email,role:'diretor',funcionarioId:null,criadoEm:new Date().toISOString()});
         state._setupDirector = {uid:cred.user.uid,nome,email};
         renderSetupWizard(3);
-      }catch(err){ toast("Erro: "+err.message,"err"); btn.disabled=false; btn.textContent="Criar conta e continuar →"; }
+      }catch(err){
+        const msg = err.code==='auth/email-already-in-use' ? "Este email já tem conta. Volte atrás e use “Já tenho conta — iniciar sessão”."
+          : err.code==='permission-denied' ? "O sistema já está configurado. Volte atrás e inicie sessão com a conta de Director existente."
+          : "Erro: "+err.message;
+        toast(msg,"err"); btn.disabled=false; btn.textContent="Criar conta e continuar →";
+      }
     };
   } else if(step===3){
     body.innerHTML = `
@@ -540,7 +573,7 @@ function renderSetupWizard(step){
 ---------------------------------------------------------------- */
 const COLLECTIONS = ["alunos","turmas","matriculas","mensalidades","funcionarios",
   "contratosModelos","assiduidade","adiantamentos","folhas","planosAvaliacao",
-  "pautas","horarios","despesas","necessidades","precosMensalidades"];
+  "pautas","horarios","despesas","necessidades","precosMensalidades","presencasAlunos"];
 const COL_STATE_KEY = {planosAvaliacao:"planos", precosMensalidades:"precos"};
 
 function attachListeners(){
@@ -657,8 +690,25 @@ const TITLES = {dashboard:"Dashboard",alunos:"Alunos",matriculas:"Matrículas",m
   funcionarios:"Funcionários",contratos:"Contratos",assiduidade:"Assiduidade",adiantamentos:"Adiantamentos",
   folha:"Folha de Salário",pedagogico:"Módulo Pedagógico",professor:"Minhas Turmas",financeiro:"Financeiro",config:"Configurações"};
 
+function allowedViewsForRole(role){
+  const secs = NAV_BY_ROLE[role]||[];
+  const set = new Set();
+  secs.forEach(s=>s.items.forEach(([id])=>set.add(id)));
+  return set;
+}
+function defaultViewForRole(role){
+  const secs = NAV_BY_ROLE[role]||[];
+  return (secs[0] && secs[0].items[0] && secs[0].items[0][0]) || 'dashboard';
+}
 function render(){
   if(!document.getElementById('main-content')) return;
+  // Nunca deixa um perfil ficar numa vista que não lhe pertence
+  // (evita, por ex., que ao trocar de conta na mesma aba se fique preso
+  // no separador "Utilizadores" ou no Dashboard financeiro do Director)
+  if(!allowedViewsForRole(state.role).has(state.view)){
+    state.view = defaultViewForRole(state.role);
+    state.viewParams = {};
+  }
   buildNav();
   document.getElementById('topbar-title').textContent = TITLES[state.view]||"";
   document.getElementById('topbar-sub').textContent = todayLong();
@@ -767,6 +817,9 @@ function canEditModule(...roles){ return roles.includes(state.role); }
    9. DASHBOARD  (apenas Director)
 ================================================================== */
 function renderDashboard(){
+  if(state.role!=='diretor'){
+    return `<div class="empty-state"><div class="ic">🔒</div><p>Acesso restrito ao Director(a).</p></div>`;
+  }
   const totalAlunos = state.alunos.filter(a=>a.estado!=='inativo').length;
   const totalFuncionarios = state.funcionarios.filter(f=>f.estado!=='inativo').length;
   const mesAtual = new Date().getMonth(), anoAtual = new Date().getFullYear();
@@ -1805,12 +1858,51 @@ function minhasTurmas(){ return state.turmas.filter(t=>t.professorId===state.fun
 function renderProfessorArea(){
   const tab = state.viewParams.tab || 'turmas';
   const turmas = minhasTurmas();
-  const tabs = [['turmas','Minhas Turmas & Alunos'],['planos','Plano de Avaliação'],['notas','Notas & Pauta']];
+  const tabs = [['turmas','Minhas Turmas & Alunos'],['presencas','Presenças'],['planos','Plano de Avaliação'],['notas','Notas & Pauta']];
   if(!state.funcionarioId){
     return `<div class="empty-state"><div class="ic">⚠️</div><p>A sua conta de professor(a) não está associada a um registo de Funcionário. Peça ao RH/Director para ligar a sua conta.</p></div>`;
   }
   return `<div class="tabs">${tabs.map(([id,lbl])=>`<div class="tab ${tab===id?'active':''}" onclick="navigate('professor',{tab:'${id}'})">${lbl}</div>`).join('')}</div>
-  ${tab==='turmas'?renderProfTurmas(turmas):tab==='planos'?renderProfPlanos(turmas):renderProfNotas(turmas)}`;
+  ${tab==='turmas'?renderProfTurmas(turmas):tab==='presencas'?renderProfPresencas(turmas):tab==='planos'?renderProfPlanos(turmas):renderProfNotas(turmas)}`;
+}
+function renderProfPresencas(turmas){
+  if(!turmas.length) return `<div class="empty-state"><div class="ic">🏫</div><p>Ainda não lhe foi alocada nenhuma turma. Contacte a Coordenação Pedagógica.</p></div>`;
+  const turmaId = state.viewParams.turmaId || turmas[0].id;
+  const turma = turmas.find(t=>t.id===turmaId) || turmas[0];
+  const data = state.viewParams.data || todayISO();
+  const alunosTurma = state.alunos.filter(a=>a.turmaId===turma.id && a.estado!=='inativo');
+  const registosDoDia = state.presencasAlunos.filter(p=>p.turmaId===turma.id && p.data===data);
+  const badgeMap = {presente:['badge-ok','Presente'],falta:['badge-danger','Falta'],atraso:['badge-warn','Atraso'],justificada:['badge-info','Falta Justificada']};
+  const rows = alunosTurma.map(a=>{
+    const reg = registosDoDia.find(r=>r.alunoId===a.id);
+    const estado = reg?.estado || null;
+    return `<tr>
+      <td><b>${esc(a.nome)}</b></td>
+      <td>${estado?`<span class="badge ${badgeMap[estado][0]}">${badgeMap[estado][1]}</span>`:'<span class="faint">Por marcar</span>'}</td>
+      <td class="row-actions">
+        ${['presente','atraso','falta','justificada'].map(e=>
+          `<button class="btn btn-sm ${estado===e?'btn-primary':'btn-outline'}" onclick="marcarPresencaAluno('${a.id}','${turma.id}','${data}','${e}')">${badgeMap[e][1]}</button>`).join('')}
+      </td></tr>`;
+  }).join('');
+  return `<div class="card">
+    <div class="card-head">
+      <h3>Presenças — ${esc(turmaLabel(turma))} — ${fmtDate(data)}</h3>
+      <div class="field-row" style="margin-bottom:0;">
+        ${turmas.length>1?`<select style="width:auto;" onchange="navigate('professor',{tab:'presencas',turmaId:this.value,data:'${data}'})">
+          ${turmas.map(t=>`<option value="${t.id}" ${t.id===turma.id?'selected':''}>${esc(turmaLabel(t))}</option>`).join('')}
+        </select>`:''}
+        <input type="date" value="${data}" style="width:auto;" onchange="navigate('professor',{tab:'presencas',turmaId:'${turma.id}',data:this.value})">
+      </div>
+    </div>
+    ${tableShell(["Aluno","Estado","Marcar"], rows, {emptyMsg:"Sem alunos activos nesta turma."})}
+  </div>`;
+}
+async function marcarPresencaAluno(alunoId,turmaId,data,estado){
+  const id = alunoId+'_'+data;
+  await db.collection('presencasAlunos').doc(id).set({
+    alunoId, turmaId, data, estado, marcadoPor: state.user.uid, actualizadoEm: new Date().toISOString()
+  }, {merge:true});
+  toast('Presença registada.','ok');
 }
 function renderProfTurmas(turmas){
   if(!turmas.length) return `<div class="empty-state"><div class="ic">🏫</div><p>Ainda não lhe foi alocada nenhuma turma. Contacte a Coordenação Pedagógica.</p></div>`;
@@ -2113,23 +2205,30 @@ async function executarResetSistema(pass){
   const cred = firebase.auth.EmailAuthProvider.credential(user.email, pass);
   await user.reauthenticateWithCredential(cred);
 
-  // Apaga todas as colecções de dados + utilizadores, em lotes de 400
-  const colsToWipe = [...COLLECTIONS, 'users'];
-  for(const col of colsToWipe){
-    let snap = await db.collection(col).limit(400).get();
-    while(!snap.empty){
+  // Apaga todas as colecções de dados, em lotes de 400
+  // (o perfil do Director em "users" fica para o fim, porque as regras de segurança dependem dele)
+  const wipe = async (col, keepId)=>{
+    let snap = await db.collection(col).get();
+    while(true){
+      const docs = snap.docs.filter(d=>d.id!==keepId).slice(0,400);
+      if(!docs.length) break;
       const batch = db.batch();
-      snap.docs.forEach(d=>batch.delete(d.ref));
+      docs.forEach(d=>batch.delete(d.ref));
       await batch.commit();
-      snap = await db.collection(col).limit(400).get();
+      snap = await db.collection(col).get();
     }
-  }
+  };
+  for(const col of COLLECTIONS) await wipe(col);
+  await wipe('users', user.uid);                 // todos os outros utilizadores
   // Apaga documentos de configuração
-  await Promise.all(['school','legal','descontos'].map(id=>db.collection('config').doc(id).delete().catch(()=>{})));
+  for(const id of ['school','legal','descontos']){
+    try{ await db.collection('config').doc(id).delete(); }catch(e){}
+  }
 
   detachListeners();
   toast('Sistema apagado. A preparar configuração inicial…','ok');
-  // Elimina por último a própria conta de autenticação do Director
+  await db.collection('users').doc(user.uid).delete();   // por fim, o perfil do Director
+  // Elimina a própria conta de autenticação do Director
   await user.delete();
   setTimeout(()=>location.reload(), 800);
 }
